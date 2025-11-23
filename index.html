@@ -1,48 +1,107 @@
 <!DOCTYPE html>
 <html lang="uz">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>11 - "G" Sinfkom Jurnali</title>
+    
+    <!-- Icon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233B82F6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 11.08V12a10 10 0 1 1-5.93-9.14'%3E%3C/path%3E%3Cpolyline points='22 4 12 14.01 9 11.01'%3E%3C/polyline%3E%3C/svg%3E">
 
-    <!-- Tailwind -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- React + Babel (для локалки быстро) -->
+    <!-- React & Babel -->
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-    <!-- html2pdf -->
+    <!-- PDF Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-
+    
     <style>
-        body { background: #F2F2F7; font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; min-height:100vh; }
-        .ios-card { background:white; border-radius:12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
-        /* PDF styles (for the cloned offscreen content) */
-        .pdf-page {
-            width: 210mm;
-            min-height: 297mm;
-            box-sizing: border-box;
-            padding: 16mm;
-            background: white;
-            color: #000;
-            font-family: "Times New Roman", Times, serif;
-            font-size: 11pt;
-            page-break-after: always;
+        /* Asosiy UI Stili */
+        body {
+            background-color: #F2F2F7;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            min-height: 100vh;
         }
-        .pdf-table { width:100%; border-collapse: collapse; margin-top: 8px; }
-        .pdf-table th, .pdf-table td { border: 1px solid #000; padding:6px 8px; vertical-align: middle; text-align: center; }
-        .pdf-table th { background:#eaeaea; font-weight:600; }
-        .pdf-table td.name { text-align: left; font-weight: 500; }
-        /* Prevent breaking rows between pages */
-        .avoid-break { page-break-inside: avoid; -webkit-column-break-inside: avoid; break-inside: avoid; }
-        /* small helpers */
-        .badge { font-weight:700; padding:3px 6px; border-radius:6px; display:inline-block; font-size:10pt; }
-        .green { color:#14532d; }
-        .red { color:#7f1d1d; }
-        .blue { color:#0b5cff; }
-        .yellow { color:#6b4500; }
+
+        /* UI Card Stili */
+        .ios-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        @media (min-width: 768px) {
+            .ios-card:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            }
+        }
+
+        /* PDF Styles - Kiritish/Print Container */
+        #print-container {
+            position: fixed;
+            left: -10000px;
+            top: 0;
+            width: 210mm; /* A4 width */
+            height: 297mm; /* A4 height */
+            opacity: 0;
+            z-index: -9999;
+            box-sizing: border-box;
+        }
+
+        /*
+        PDF Content Class: html2pdf-content - Barcha kontent uchun
+        */
+        #pdf-content {
+            width: 100%;
+            background: white;
+            font-family: 'Times New Roman', serif;
+            color: black;
+            box-sizing: border-box;
+            padding: 25mm 20mm; /* A4 print margin simulation (top/bottom, left/right) */
+            min-height: 297mm; /* Ensures proper height calculation */
+        }
+        
+        /* PDF Table Stili - Jurnal uchun asosiy jadval */
+        .pdf-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .pdf-table th, .pdf-table td {
+            border: 1px solid #000;
+            padding: 4px 6px; 
+            font-size: 11pt; /* Kichikroq shrift, jurnalga o'xshash */
+            vertical-align: middle;
+            text-align: center;
+            height: 30px; 
+            line-height: 1.2;
+        }
+        .pdf-table th {
+            background-color: #e5e5e5; /* Yaxshiroq ko'rinish uchun */
+            font-weight: bold;
+        }
+        .pdf-table td:nth-child(2) {
+            text-align: left; /* F.I.SH chapga tekislangan */
+            font-weight: normal;
+        }
+
+        /* Sahifalararo uzilishni oldini olish */
+        .avoid-break {
+            page-break-after: avoid !important;
+            page-break-inside: avoid !important;
+        }
+
+        /* PDF Rangli Stillar */
+        .pdf-text-green { color: #166534; font-weight: bold; }
+        .pdf-text-red { color: #991b1b; font-weight: bold; }
+        .pdf-text-yellow { color: #854d0e; font-weight: bold; }
+        .pdf-text-blue { color: #1e40af; font-weight: bold; }
+        .pdf-text-purple { color: #5B21B6; font-weight: bold; }
+
     </style>
 </head>
 <body>
@@ -50,11 +109,12 @@
 
     <script type="text/babel">
         const { useState, useEffect } = React;
-
-        const INITIAL_STUDENTS = [
+        
+        // --- ASOSIY MA'LUMOTLAR ---
+        const INITIAL_STUDENTS_BASE = [
             { id: 1, name: "Ahmadaliyeva Shahlo" },
             { id: 2, name: "Azimova Gulchehra" },
-            { id: 3, name: "Abdukarimova Muhlisa" },
+            { id: 3, name: "Abdukarimova Muhlisa" }, // O'chiriladigan o'quvchi
             { id: 4, name: "Husanova Sug'diyona" },
             { id: 5, name: "Gafurova Yodgora" },
             { id: 6, name: "Jo'raxonov Mansurxon" },
@@ -73,383 +133,452 @@
             { id: 19, name: "Nazarova Iroda" },
             { id: 20, name: "Adxamova Dilnoza" }
         ];
+        
+        // So'rovga binoan "Abdukarimova Muhlisa" o'quvchisi olib tashlandi va ID'lar qayta tartiblandi
+        const filteredStudents = INITIAL_STUDENTS_BASE
+            .filter(s => s.name !== "Abdukarimova Muhlisa")
+            .map((s, index) => ({ ...s, id: index + 1 })); // ID'larni yangilash
 
+        const INITIAL_STUDENTS = filteredStudents;
+
+
+        // --- IKONKALAR ---
         const Icons = {
-            Edit: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>,
-            Trash: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
-            Plus: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
-            Download: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
-            Clock: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Edit: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>,
+            Trash: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
+            Download: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
+            Clock: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         };
 
         const getFormattedDate = () => {
             const d = new Date();
-            return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const year = d.getFullYear();
+            return `${day}.${month}.${year}`;
         };
 
         function App() {
+            // --- STATE MANAGEMENT ---
             const [students, setStudents] = useState(() => {
-                const s = localStorage.getItem('students_list_v2');
-                return s ? JSON.parse(s) : INITIAL_STUDENTS;
+                const s = localStorage.getItem('students_list');
+                // Agar saqlangan ma'lumot mavjud bo'lsa, ularni, aks holda yangi filtrlangan ro'yxatni ishlatish
+                return s ? JSON.parse(s) : INITIAL_STUDENTS; 
             });
             const [attendance, setAttendance] = useState(() => {
-                const a = localStorage.getItem('attendance_data_v2');
+                const a = localStorage.getItem('attendance_data');
                 return a ? JSON.parse(a) : {};
             });
             const [missedLessons, setMissedLessons] = useState(() => {
-                const m = localStorage.getItem('missed_lessons_v2');
+                const m = localStorage.getItem('missed_lessons');
                 return m ? JSON.parse(m) : {};
             });
 
-            const [isGenerating, setIsGenerating] = useState(false);
             const [currentDate] = useState(getFormattedDate());
+            const [isGenerating, setIsGenerating] = useState(false);
 
-            // modals
-            const [addModal, setAddModal] = useState(false);
+            // Modal states
             const [editModal, setEditModal] = useState(null);
             const [deleteModal, setDeleteModal] = useState(null);
             const [lessonModal, setLessonModal] = useState(null);
+            
+            // "addModal" holati olib tashlandi
 
-            useEffect(() => { localStorage.setItem('students_list_v2', JSON.stringify(students)); }, [students]);
-            useEffect(() => { localStorage.setItem('attendance_data_v2', JSON.stringify(attendance)); }, [attendance]);
-            useEffect(() => { localStorage.setItem('missed_lessons_v2', JSON.stringify(missedLessons)); }, [missedLessons]);
+            // --- DATA PERSISTENCE ---
+            useEffect(() => { localStorage.setItem('students_list', JSON.stringify(students)); }, [students]);
+            useEffect(() => { localStorage.setItem('attendance_data', JSON.stringify(attendance)); }, [attendance]);
+            useEffect(() => { localStorage.setItem('missed_lessons', JSON.stringify(missedLessons)); }, [missedLessons]);
 
-            const STATUS_BTNS = [
-                { key: 'bor', label: 'Bor' },
-                { key: 'yoq', label: "Yo'q" },
-                { key: 'sababli', label: 'Sababli' },
-                { key: 'oilaviy', label: 'Oilaviy' }
-            ];
+            // --- LOGIC ---
 
-            // Toggle full-day statuses and clear hour-missed if necessary
+            // Toggle attendance status
             const toggleStatus = (id, status) => {
                 setAttendance(prev => {
-                    // toggle off if same
                     if (prev[id] === status) {
                         const next = { ...prev };
                         delete next[id];
-                        // when clearing full-day, keep missedLessons untouched (user may want)
                         return next;
                     }
-                    // if setting a full status (not hour-based), clear hour-based missed lessons for that student
-                    if (status !== 'darsda_yoq_soatli') {
-                        setMissedLessons(prevM => {
-                            const nextM = { ...prevM };
-                            delete nextM[id];
-                            return nextM;
+                    
+                    // Agar "Bor" deb belgilansa, soatli yo'qlarni tozalash
+                    if (status === 'bor') {
+                        setMissedLessons(prevL => {
+                            const nextL = { ...prevL };
+                            delete nextL[id];
+                            return nextL;
                         });
                     }
+                    
+                    // Agar to'liq yo'q statuslari (Yoq, Sababli, Oilaviy) tanlansa, soatli yo'qlarni tozalash
+                    if (status !== 'bor') {
+                        setMissedLessons(prevL => {
+                            const nextL = { ...prevL };
+                            delete nextL[id];
+                            return nextL;
+                        });
+                    }
+                    
                     return { ...prev, [id]: status };
                 });
             };
 
-            // Toggle individual lesson hours
+            // Toggle specific missed lessons
             const toggleLesson = (studentId, lessonNum) => {
                 setMissedLessons(prev => {
-                    const cur = prev[studentId] ? [...prev[studentId]] : [];
-                    const exists = cur.includes(lessonNum);
+                    const current = prev[studentId] || [];
                     let updated;
-                    if (exists) updated = cur.filter(x => x !== lessonNum);
-                    else updated = [...cur, lessonNum].sort((a,b)=>a-b);
-
-                    // set or clear attendance flag for hour-based
-                    setAttendance(prevA => {
-                        const nextA = { ...prevA };
-                        if (updated.length > 0) nextA[studentId] = 'darsda_yoq_soatli';
-                        else delete nextA[studentId];
-                        return nextA;
-                    });
-
-                    if (updated.length > 0) return { ...prev, [studentId]: updated };
-                    const next = { ...prev }; delete next[studentId]; return next;
+                    if (current.includes(lessonNum)) {
+                        updated = current.filter(l => l !== lessonNum);
+                    } else {
+                        updated = [...current, lessonNum].sort((a, b) => a - b);
+                    }
+                    
+                    // Agar dars qoldirilgan soatlar bo'lsa, statusni 'darsda_yoq_soatli' deb belgilash
+                    if (updated.length > 0) {
+                        setAttendance(prevA => ({ ...prevA, [studentId]: 'darsda_yoq_soatli' }));
+                        return { ...prev, [studentId]: updated };
+                    } else {
+                        // Agar qoldirilgan dars soati bo'lmasa, soatlarni ham, davomat statusini ham olib tashlash
+                        const next = { ...prev };
+                        delete next[studentId];
+                        setAttendance(prevA => {
+                             const nextA = {...prevA};
+                             delete nextA[studentId];
+                             return nextA;
+                        });
+                        return next;
+                    }
                 });
             };
 
-            // CRUD
-            const handleAdd = (name) => {
-                if (!name || !name.trim()) return;
-                const newId = students.length ? Math.max(...students.map(s=>s.id))+1 : 1;
-                setStudents(prev => [...prev, { id: newId, name: name.trim() }]);
-                setAddModal(false);
-            };
-            const handleEdit = (obj) => {
-                if (!obj.name || !obj.name.trim()) return;
-                setStudents(prev => prev.map(s => s.id === obj.id ? { ...s, name: obj.name.trim() } : s));
+            // CRUD operations (Add funksiyasi olib tashlandi)
+            const handleEdit = (updatedStudent) => {
+                if(!updatedStudent.name.trim()) return;
+                setStudents(students.map(s => s.id === updatedStudent.id ? updatedStudent : s));
                 setEditModal(null);
             };
+            
             const handleDelete = () => {
-                setStudents(prev => prev.filter(s => s.id !== deleteModal.id));
-                setAttendance(prev => { const n = { ...prev }; delete n[deleteModal.id]; return n; });
-                setMissedLessons(prev => { const n = { ...prev }; delete n[deleteModal.id]; return n; });
+                // O'quvchini ro'yxatdan o'chirish
+                const newStudents = students.filter(s => s.id !== deleteModal.id);
+                // ID'larni qayta tartiblash (Bu kerak, chunki T/r raqamlari ID'ga bog'liq emas, faqat ro'yxatdagi tartibga)
+                const reindexedStudents = newStudents.map((s, index) => ({ ...s, id: index + 1 }));
+                setStudents(reindexedStudents);
+
+                // Davomat va dars soatlar ma'lumotlarini tozalash
+                const newAtt = { ...attendance }; delete newAtt[deleteModal.id]; setAttendance(newAtt);
+                const newMiss = { ...missedLessons }; delete newMiss[deleteModal.id]; setMissedLessons(newMiss);
                 setDeleteModal(null);
             };
 
-            // --- PDF generation (robust, device-agnostic, auto pages) ---
-            const generatePDF = async () => {
+            // --- PDF EXPORT FUNCTION (Optimized for A4 and page breaks) ---
+            const handleExport = async () => {
                 setIsGenerating(true);
+                const element = document.getElementById('pdf-content'); 
+                const container = document.getElementById('print-container');
+                if (!element) {
+                    setIsGenerating(false);
+                    return;
+                }
+
+                container.classList.add('generating');
+                
+                const opt = {
+                    margin:       [10, 10, 10, 10], // Margins: [top, left, bottom, right] in mm
+                    filename:     `Davomat_11G_${currentDate}.pdf`,
+                    image:        { type: 'jpeg', quality: 0.98 },
+                    html2canvas:  { 
+                        scale: 3, // Lower scale for performance, 3 is usually enough for clarity
+                        useCORS: true, 
+                        logging: false 
+                    },
+                    jsPDF:        { 
+                        unit: 'mm', 
+                        format: 'a4', 
+                        orientation: 'portrait' 
+                    }
+                };
+
                 try {
-                    // 1) Build a clone element (so we don't affect visible UI)
-                    const clone = document.createElement('div');
-                    // Add an outer wrapper so we can break into pages via CSS if needed.
-                    clone.style.position = 'fixed';
-                    clone.style.left = '-9999px'; // offscreen
-                    clone.style.top = '0';
-                    clone.style.width = 'auto';
-                    clone.style.zIndex = '9999';
-                    document.body.appendChild(clone);
-
-                    // Create doc header & table using current state values
-                    const headerHtml = `
-                        <div class="pdf-page">
-                            <div style="display:flex;justify-content:space-between;align-items:flex-end;">
-                                <div>
-                                    <h1 style="font-size:16pt;margin:0;padding:0;font-weight:700;text-transform:uppercase;">11 - "G" Sinf O'quvchilarining Davomat Hisoboti</h1>
-                                    <p style="margin:6px 0 0 0;font-size:11pt;">Sana: <strong>${currentDate}</strong></p>
-                                </div>
-                                <div style="text-align:right;">
-                                    <p style="margin:0;font-size:10pt;color:#555;">Tuzuvchi: Sadriddinov Islom</p>
-                                </div>
-                            </div>
-                            <table class="pdf-table" style="margin-top:12px;">
-                                <thead>
-                                    <tr>
-                                        <th style="width:6%;">T/r</th>
-                                        <th style="width:62%;text-align:left;">O'quvchi F.I.SH.</th>
-                                        <th style="width:32%;">Davomat Holati</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                    `;
-
-                    let rowsHtml = '';
-                    // Prepare rows
-                    students.forEach((s, idx) => {
-                        const id = s.id;
-                        const status = attendance[id];
-                        const missed = missedLessons[id] || [];
-                        let statusHtml = '';
-
-                        if (status === 'darsda_yoq_soatli' && missed.length) {
-                            statusHtml = `<div class="badge red">Soatli yo'q</div><div style="font-size:9pt;margin-top:6px;color:#000;">(${missed.join(', ')}-soat)</div>`;
-                        } else if (status === 'bor') {
-                            statusHtml = `<span class="badge green">Bor</span>`;
-                        } else if (status === 'yoq') {
-                            statusHtml = `<span class="badge red">Yo'q</span>`;
-                        } else if (status === 'sababli') {
-                            statusHtml = `<span class="badge yellow">Sababli</span>`;
-                        } else if (status === 'oilaviy') {
-                            statusHtml = `<span class="badge blue">Oilaviy sharoit</span>`;
-                        } else {
-                            statusHtml = '';
-                        }
-
-                        rowsHtml += `
-                            <tr class="avoid-break">
-                                <td style="font-weight:700;">${idx+1}</td>
-                                <td class="name">${escapeHtml(s.name)}</td>
-                                <td>${statusHtml}</td>
-                            </tr>
-                        `;
-                    });
-
-                    const footerAndClose = `
-                                </tbody>
-                            </table>
-                        </div>
-                    `;
-                    clone.innerHTML = headerHtml + rowsHtml + footerAndClose;
-
-                    // 2) html2pdf options — using html2canvas scale with devicePixelRatio ensures sharp PDF on phones and desktops
-                    const opt = {
-                        margin: [10, 10, 10, 10], // mm
-                        filename: `Davomat_11G_${currentDate}.pdf`,
-                        image: { type: 'jpeg', quality: 0.98 },
-                        html2canvas: {
-                            useCORS: true,
-                            scale: Math.max(2, (window.devicePixelRatio || 1) * 2),
-                            logging: false,
-                        },
-                        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                        pagebreak: { mode: ['css', 'legacy'] } // respect CSS page-break rules (page-break-inside: avoid)
-                    };
-
-                    // 3) Run export
-                    await html2pdf().set(opt).from(clone).save();
-
-                    // 4) cleanup
-                    document.body.removeChild(clone);
-
-                } catch (err) {
-                    console.error("PDF ошибка:", err);
-                    alert("PDF экспорт не получился — смотри консоль.");
+                    await new Promise(r => setTimeout(r, 100)); // Delay for rendering hidden content
+                    await html2pdf().set(opt).from(element).save();
+                } catch (e) {
+                    console.error("PDF Export Error:", e);
                 } finally {
+                    container.classList.remove('generating');
                     setIsGenerating(false);
                 }
             };
 
-            // Escape HTML for student names (safety)
-            const escapeHtml = (unsafe) => {
-                if (!unsafe && unsafe !== "") return "";
-                return String(unsafe)
-                  .replaceAll("&", "&amp;")
-                  .replaceAll("<", "&lt;")
-                  .replaceAll(">", "&gt;")
-                  .replaceAll('"', "&quot;")
-                  .replaceAll("'", "&#039;");
+            // --- PDF STATUS FORMATTER ---
+            const getStatusTextPDF = (id) => {
+                const status = attendance[id];
+                const missed = missedLessons[id] || [];
+                
+                if (status === 'darsda_yoq_soatli' && missed.length > 0) {
+                    const lessonsText = missed.join(', ');
+                    return (
+                        <span className="pdf-text-red">
+                            Soatli yo'q
+                            <div style={{fontSize: '9pt', fontWeight:'normal', color:'black', marginTop: '2px'}}>
+                                ({lessonsText}-soat)
+                            </div>
+                        </span>
+                    );
+                }
+
+                if (status === 'bor') return <span className="pdf-text-green">Bor</span>;
+                if (status === 'yoq') return <span className="pdf-text-red">Yo'q</span>;
+                if (status === 'sababli') return <span className="pdf-text-yellow">Sababli</span>;
+                if (status === 'oilaviy') return <span className="pdf-text-blue">Oilaviy sharoit</span>;
+
+                return "";
+            };
+            
+            // --- UI CONSTANTS ---
+            const STATUS_BTNS = [
+                { key: 'bor', label: 'Bor', color: 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100' },
+                { key: 'yoq', label: "Yo'q", color: 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' },
+                { key: 'sababli', label: 'Sababli', color: 'bg-yellow-50 text-yellow-600 border-yellow-200 hover:bg-yellow-100' },
+                { key: 'oilaviy', label: 'Oilaviy', color: 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100' }
+            ];
+            
+            const getButtonClass = (studentId, key) => {
+                const currentStatus = attendance[studentId];
+                const btnData = STATUS_BTNS.find(b => b.key === key);
+                
+                // Maxsus holat: agar status soatli bo'lsa, barcha boshqa tugmalarni oddiy ko'rsatish
+                if (currentStatus === 'darsda_yoq_soatli' && key !== 'bor') {
+                    return 'bg-gray-50 text-gray-400 border-transparent';
+                }
+                
+                // Maxsus holat: soatli yo'q bo'lsa, faqat "Bor" tugmasi tanlanmagan holatda bo'ladi
+                if (currentStatus === 'darsda_yoq_soatli' && key === 'bor') {
+                     return 'bg-gray-50 text-gray-400 border-transparent';
+                }
+                
+                if (currentStatus === key) {
+                    return btnData.color + ' border-current shadow-sm ring-2 ring-offset-1 ring-gray-200';
+                }
+                
+                return 'bg-gray-50 text-gray-400 border-transparent';
             };
 
-            // UI helpers for class names
-            const getButtonClass = (studentId, key) => {
-                const cur = attendance[studentId];
-                const isHour = cur === 'darsda_yoq_soatli';
-                if (isHour && key !== 'bor') return 'bg-gray-50 text-gray-300 border-transparent opacity-60 cursor-not-allowed';
-                if (cur && cur !== 'bor' && key === 'bor') return 'bg-gray-50 text-gray-300 border-transparent opacity-60 cursor-not-allowed';
-                if (cur === key) {
-                    const map = { bor: 'bg-green-50 text-green-700 border-green-200', yoq:'bg-red-50 text-red-700 border-red-200', sababli:'bg-yellow-50 text-yellow-700 border-yellow-200', oilaviy:'bg-blue-50 text-blue-700 border-blue-200' };
-                    return `${map[key]} border-current shadow-sm`;
-                }
-                return 'bg-gray-50 text-gray-400 border-transparent hover:bg-gray-100';
-            };
 
             return (
-                <div className="w-full min-h-screen relative flex flex-col items-center pb-24">
-                    <div className="w-full max-w-7xl px-4 pt-6">
-                        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 sticky top-2 bg-[#F2F2F7] z-20 py-4 rounded-xl px-2">
-                            <div className="mb-3 md:mb-0">
+                <div className="w-full min-h-screen relative flex flex-col items-center">
+                    
+                    {/* Asosiy kontent */}
+                    <div className="w-full max-w-7xl px-4 pt-6 pb-16"> 
+                        
+                        {/* Header va Export tugmasi */}
+                        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 sticky top-0 bg-[#F2F2F7] z-20 py-4 shadow-sm md:shadow-none md:static rounded-xl px-2">
+                            <div className="mb-4 md:mb-0">
                                 <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Sinf Jurnali</h2>
                                 <h1 className="text-3xl font-bold text-gray-900">11 - "G" Sinf</h1>
                                 <p className="text-sm text-gray-400 font-medium">{currentDate}</p>
                             </div>
-                            <div className="flex gap-3 items-center">
-                                <button onClick={generatePDF} disabled={isGenerating} className="bg-[#007AFF] hover:bg-[#005bb5] text-white px-4 py-3 rounded-full shadow flex items-center gap-2">
-                                    {isGenerating ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/> : <Icons.Download />} PDF yuklab olish
-                                </button>
-                                <button onClick={() => { setAddModal(true); setEditModal(null); }} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-full shadow">
-                                    <Icons.Plus /> O'quvchi qo'shish
-                                </button>
-                            </div>
+                            <button 
+                                onClick={handleExport}
+                                disabled={isGenerating}
+                                className="bg-[#007AFF] hover:bg-[#005bb5] text-white px-6 py-3 rounded-full shadow-lg active:scale-95 transition-transform flex items-center gap-2 font-semibold"
+                            >
+                                 {isGenerating ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"/> : <><Icons.Download /> PDF yuklab olish</>}
+                            </button>
                         </header>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {students.map((s, idx) => {
-                                const isMissed = attendance[s.id] === 'darsda_yoq_soatli';
-                                const curLessons = missedLessons[s.id] || [];
-                                const hourDisabled = attendance[s.id] && attendance[s.id] !== 'darsda_yoq_soatli' && attendance[s.id] !== 'bor';
+                        {/* O'quvchilar ro'yxati */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                            {students.map((s, i) => {
+                                const isMissedHours = attendance[s.id] === 'darsda_yoq_soatli';
+                                const currentLessons = missedLessons[s.id] || [];
+                                
                                 return (
-                                    <div key={s.id} className="ios-card p-4 flex flex-col justify-between">
-                                        <div className="flex justify-between items-center mb-3">
-                                            <div className="flex items-center gap-3 w-2/3">
-                                                <span className="text-gray-400 font-bold text-sm w-5">{idx+1}.</span>
-                                                <h3 className="font-semibold text-gray-900 truncate text-lg">{s.name}</h3>
-                                            </div>
-                                            <div className="flex gap-1">
-                                                <button onClick={() => setEditModal({id:s.id,name:s.name})} className="p-2 bg-gray-100 hover:bg-gray-200 text-blue-500 rounded-full"><Icons.Edit /></button>
-                                                <button onClick={() => setDeleteModal({id:s.id,name:s.name})} className="p-2 bg-gray-100 hover:bg-gray-200 text-red-500 rounded-full"><Icons.Trash /></button>
-                                            </div>
+                                <div key={s.id} className="ios-card p-4 h-full flex flex-col justify-between transition-all duration-200 hover:border-blue-300">
+                                    <div className="flex justify-between items-center mb-3">
+                                        <div className="flex items-center gap-3 w-2/3">
+                                            <span className="text-gray-400 font-bold text-sm w-5">{i+1}.</span>
+                                            <h3 className="font-semibold text-gray-900 truncate text-lg">{s.name}</h3>
                                         </div>
-
-                                        <div>
-                                            <div className="flex gap-2 mb-2">
-                                                <div className="flex-1 grid grid-cols-4 gap-1">
-                                                    {STATUS_BTNS.map(btn => (
-                                                        <button
-                                                            key={btn.key}
-                                                            onClick={() => toggleStatus(s.id, btn.key)}
-                                                            className={`py-2 rounded-lg text-[11px] font-bold border ${getButtonClass(s.id, btn.key)}`}
-                                                            disabled={isMissed && btn.key !== 'bor'}
-                                                        >
-                                                            {btn.label}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                                <button
-                                                    onClick={() => setLessonModal({id:s.id,name:s.name})}
-                                                    className={`w-10 flex items-center justify-center rounded-lg border ${curLessons.length ? 'bg-purple-100 text-purple-600 border-purple-300' : 'bg-gray-50 text-gray-400 border-transparent'} ${hourDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                    disabled={hourDisabled}
-                                                    title="Dars qoldirish soatlari"
-                                                >
-                                                    <Icons.Clock />
-                                                </button>
-                                            </div>
-
-                                            {isMissed && curLessons.length > 0 && (
-                                                <div className="mt-2 text-xs text-purple-600 font-medium px-2 bg-purple-50 py-1 rounded-md">
-                                                    Darsda yo'q soatlar: <span className="font-bold">{curLessons.join(', ')}</span>
-                                                </div>
-                                            )}
-                                            {attendance[s.id] && attendance[s.id] !== 'bor' && attendance[s.id] !== 'darsda_yoq_soatli' && (
-                                                <div className="mt-2 text-xs text-red-600 font-medium px-2 bg-red-50 py-1 rounded-md">
-                                                    To'liq kun yo'q (sababi: {STATUS_BTNS.find(b=>b.key===attendance[s.id])?.label})
-                                                </div>
-                                            )}
+                                        <div className="flex gap-1">
+                                            {/* Faqat F.I.SH. tahrirlash qoldirildi */}
+                                            <button onClick={() => setEditModal({id: s.id, name: s.name})} className="p-2 bg-gray-100 hover:bg-gray-200 text-blue-500 rounded-full transition-colors"><Icons.Edit /></button>
+                                            <button onClick={() => setDeleteModal({id: s.id, name: s.name})} className="p-2 bg-gray-100 hover:bg-gray-200 text-red-500 rounded-full transition-colors"><Icons.Trash /></button>
                                         </div>
                                     </div>
-                                );
+
+                                    <div>
+                                        <div className="flex gap-2 mb-2">
+                                            <div className="flex-1 grid grid-cols-4 gap-1">
+                                                {STATUS_BTNS.map(btn => (
+                                                    <button
+                                                        key={btn.key}
+                                                        onClick={() => toggleStatus(s.id, btn.key)}
+                                                        className={`py-2 rounded-lg text-[10px] sm:text-xs font-bold border transition-all active:scale-95 ${getButtonClass(s.id, btn.key)}`}
+                                                    >
+                                                        {btn.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            
+                                            <button 
+                                                onClick={() => setLessonModal({id: s.id, name: s.name})}
+                                                className={`w-10 flex items-center justify-center rounded-lg border transition-all hover:bg-gray-100 ${currentLessons.length ? 'bg-purple-100 text-purple-600 border-purple-300 shadow-sm' : 'bg-gray-50 text-gray-400 border-transparent'}`}
+                                                title="Dars qoldirish soatlari"
+                                                disabled={attendance[s.id] && attendance[s.id] !== 'darsda_yoq_soatli' && attendance[s.id] !== 'bor'}
+                                            >
+                                                <Icons.Clock />
+                                            </button>
+                                        </div>
+                                        
+                                        {isMissedHours && currentLessons.length > 0 && (
+                                            <div className="mt-2 text-xs text-purple-600 font-medium px-2 bg-purple-50 py-1 rounded-md">
+                                                Darsda yo'q soatlar: <span className="font-bold">{currentLessons.join(', ')}</span>
+                                            </div>
+                                        )}
+                                        {attendance[s.id] && attendance[s.id] !== 'bor' && attendance[s.id] !== 'darsda_yoq_soatli' && (
+                                             <div className="mt-2 text-xs text-red-600 font-medium px-2 bg-red-50 py-1 rounded-md">
+                                                To'liq kun yo'q (sababi: {STATUS_BTNS.find(b => b.key === attendance[s.id])?.label})
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            );
                             })}
                         </div>
                     </div>
 
-                    {/* fixed add button bottom */}
-                    <div className="fixed bottom-6 left-0 right-0 flex justify-center pointer-events-none z-30 px-4">
-                        <button onClick={() => setAddModal(true)} className="pointer-events-auto flex items-center gap-2 bg-[#007AFF] hover:bg-[#005bb5] text-white px-8 py-4 rounded-full shadow-xl font-bold">
-                            <Icons.Plus /> Qo'shish
-                        </button>
-                    </div>
+                    {/* Qo'shish Tugmasi Olib Tashlandi */}
 
-                    {/* Modals */}
-                    {(addModal || editModal || deleteModal || lessonModal) && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-                            {(addModal || editModal) && (
-                                <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
-                                    <h3 className="text-xl font-bold mb-4 text-center">{addModal ? "Yangi o'quvchi" : "Tahrirlash"}</h3>
-                                    <input id="studentNameInput" defaultValue={editModal ? editModal.name : ""} autoFocus className="w-full bg-gray-100 p-3 rounded-xl mb-4 outline-none" placeholder="F.I.SH" />
+                    {/* Yuklash Ekrani */}
+                    {isGenerating && (
+                        <div className="fixed inset-0 bg-black/50 z-50 flex flex-col items-center justify-center text-white backdrop-blur-sm">
+                            <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mb-4"></div>
+                            <p className="font-bold text-lg">PDF tayyorlanmoqda...</p>
+                        </div>
+                    )}
+
+                    {/* Modallar (Tahrirlash, O'chirish, Dars Soatlari) */}
+                    {(editModal || deleteModal || lessonModal) && ( // addModal olib tashlandi
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm transition-opacity duration-200">
+                            
+                            {/* Tahrirlash Modali */}
+                            {editModal && (
+                                <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl transition-transform duration-300 ease-out scale-100">
+                                    <h3 className="text-xl font-bold mb-4 text-center">Tahrirlash</h3>
+                                    <input 
+                                        autoFocus
+                                        className="w-full bg-gray-100 p-4 rounded-xl text-lg mb-4 outline-none focus:ring-2 focus:ring-[#007AFF]"
+                                        placeholder="F.I.SH"
+                                        defaultValue={editModal.name}
+                                        id="studentNameInput"
+                                    />
                                     <div className="flex gap-3">
-                                        <button onClick={() => { setAddModal(false); setEditModal(null); }} className="flex-1 py-3 bg-gray-100 rounded-xl">Bekor</button>
-                                        <button onClick={() => {
-                                            const val = document.getElementById('studentNameInput').value;
-                                            addModal ? handleAdd(val) : handleEdit({ ...editModal, name: val });
-                                        }} className="flex-1 py-3 bg-[#007AFF] text-white rounded-xl">Saqlash</button>
+                                        <button onClick={() => setEditModal(null)} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl font-bold transition-colors">Bekor</button>
+                                        <button 
+                                            onClick={() => {
+                                                const val = document.getElementById('studentNameInput').value;
+                                                handleEdit({...editModal, name: val});
+                                            }} 
+                                            className="flex-1 py-3 bg-[#007AFF] hover:bg-[#005bb5] text-white rounded-xl font-bold transition-colors"
+                                        >
+                                            Saqlash
+                                        </button>
                                     </div>
                                 </div>
                             )}
 
+                            {/* O'chirish Modali */}
                             {deleteModal && (
-                                <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl text-center">
+                                <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl text-center transition-transform duration-300 ease-out scale-100">
                                     <h3 className="text-xl font-bold mb-2">O'chirish</h3>
                                     <p className="text-gray-500 mb-6">{deleteModal.name} o'chirilsinmi?</p>
                                     <div className="flex gap-3">
-                                        <button onClick={() => setDeleteModal(null)} className="flex-1 py-3 bg-gray-100 rounded-xl">Yo'q</button>
-                                        <button onClick={handleDelete} className="flex-1 py-3 bg-red-500 text-white rounded-xl">Ha</button>
+                                        <button onClick={() => setDeleteModal(null)} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl font-bold transition-colors">Yo'q</button>
+                                        <button onClick={handleDelete} className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold transition-colors">Ha</button>
                                     </div>
                                 </div>
                             )}
 
+                            {/* Dars Soatlari Modali */}
                             {lessonModal && (
-                                <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+                                <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl transition-transform duration-300 ease-out scale-100">
                                     <h3 className="text-lg font-bold text-center mb-1">{lessonModal.name}</h3>
                                     <p className="text-center text-gray-500 text-sm mb-4">Qaysi soatlarda darsda yo'q?</p>
+                                    
                                     <div className="grid grid-cols-4 gap-3 mb-6">
-                                        {[1,2,3,4,5,6,7].map(num => {
+                                        {[1, 2, 3, 4, 5, 6, 7].map(num => {
                                             const isMissed = missedLessons[lessonModal.id]?.includes(num);
                                             return (
-                                                <button key={num} onClick={() => toggleLesson(lessonModal.id, num)}
-                                                    className={`aspect-square rounded-xl font-bold text-xl ${isMissed ? 'bg-purple-600 text-white scale-105' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}>
+                                                <button
+                                                    key={num}
+                                                    onClick={() => toggleLesson(lessonModal.id, num)}
+                                                    className={`aspect-square rounded-xl font-bold text-xl transition-all ${isMissed ? 'bg-purple-600 text-white shadow-lg scale-105' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}
+                                                >
                                                     {num}
                                                 </button>
-                                            );
+                                            )
                                         })}
                                     </div>
-                                    <button onClick={() => setLessonModal(null)} className="w-full py-3 bg-[#007AFF] text-white rounded-xl">Yopish</button>
+                                    <button onClick={() => setLessonModal(null)} className="w-full py-3 bg-[#007AFF] hover:bg-[#005bb5] text-white rounded-xl font-bold transition-colors">Yopish</button>
                                 </div>
                             )}
                         </div>
                     )}
 
+                    {/* PDF Template - YASHIRINGAN KONTENT (Optimallashtirilgan) */}
+                    <div id="print-container">
+                        <div id="pdf-content" className="html2pdf-content">
+                            
+                            {/* Sarlavha Qismi - Sahifani bo'lishga yo'l qo'yilmaydi */}
+                            <div className="border-b-2 border-black pb-3 mb-4 flex justify-between items-end avoid-break" style={{fontSize: '11pt'}}>
+                                <div>
+                                    <h1 style={{fontSize: '18pt', fontWeight: 'bold', textTransform: 'uppercase'}}>
+                                        11 - "G" Sinf O'quvchilarining Davomat Hisoboti
+                                    </h1>
+                                    <p style={{fontSize: '12pt', marginTop: '5px'}}>
+                                        Sana: <span style={{fontWeight: 'bold'}}>{currentDate}</span>
+                                    </p>
+                                </div>
+                                <div style={{textAlign: 'right'}}>
+                                    <p style={{fontSize: '10pt', color: '#555'}}>Tuzuvchi: Sadriddinov Islom</p>
+                                </div>
+                            </div>
+
+                            {/* Davomat Jadvali */}
+                            <table className="pdf-table">
+                                <thead>
+                                    <tr>
+                                        <th style={{width: '6%'}}>T/r</th>
+                                        <th style={{width: '60%', textAlign: 'left'}}>O'quvchi F.I.SH.</th>
+                                        <th style={{width: '34%'}}>Davomat Holati</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {students.map((s, i) => {
+                                        const content = getStatusTextPDF(s.id);
+                                        const isAbsent = attendance[s.id] && attendance[s.id] !== 'bor';
+                                        
+                                        return (
+                                            <tr key={s.id} className={isAbsent ? 'bg-gray-50' : ''}>
+                                                <td style={{fontWeight: 'bold'}}>{i + 1}</td>
+                                                <td>{s.name}</td>
+                                                <td>
+                                                    {content}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             );
         }
 
-        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
     </script>
 </body>
 </html>
