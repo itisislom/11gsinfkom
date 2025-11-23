@@ -14,7 +14,6 @@
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Lucide Icons are no longer needed as they are not used in the final version, but kept for future extensions -->
     <!-- PDF Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
@@ -55,7 +54,6 @@
 
         /*
         PDF Content Class: html2pdf-content - Barcha kontent uchun
-        pdf-page - Faqat birinchi sahifa uchun, keyingilari avtomatik bo'linadi.
         */
         #pdf-content {
             width: 100%;
@@ -537,7 +535,8 @@
                                     </p>
                                 </div>
                                 <div style={{textAlign: 'right'}}>
-                                    <p style={{fontSize: '10pt', color: '#555'}}>Tuzuvchi: Sinf Rahbari</p>
+                                    {/* O'zgartirish: Tuzuvchi nomi o'zgartirildi */}
+                                    <p style={{fontSize: '10pt', color: '#555'}}>Tuzuvchi: Sadriddinov Islom</p>
                                 </div>
                             </div>
 
@@ -568,26 +567,9 @@
                                 </tbody>
                             </table>
                             
-                            {/* Izoh va Imzo - Sahifani bo'lishga yo'l qo'yilmaydi */}
-                            <div style={{marginTop: '50px', fontSize: '11pt'}} className="avoid-break">
-                                <p style={{fontWeight: 'bold', marginBottom: '15px'}}>Izoh:</p>
-                                <ul style={{listStyleType: 'disc', marginLeft: '20px'}}>
-                                    <li><span className="pdf-text-green">Bor</span> - O'quvchi butun kun davomida darsda qatnashdi.</li>
-                                    <li><span className="pdf-text-red">Yo'q</span> - O'quvchi butun kun davomida sababsiz darsda yo'q.</li>
-                                    <li><span className="pdf-text-yellow">Sababli</span> - O'quvchi ma'lum sababga ko'ra darsda yo'q (masalan, musobaqa, kasallik).</li>
-                                    <li><span className="pdf-text-blue">Oilaviy sharoit</span> - O'quvchi oilaviy sharoit tufayli darsda yo'q.</li>
-                                    <li><span className="pdf-text-red">Soatli yo'q</span> - O'quvchi faqat ko'rsatilgan soatlarda darsda yo'q.</li>
-                                </ul>
+                            {/* So'rovga ko'ra Izoh va Imzo qismlari olib tashlandi. */}
+                            {/* Matn davom ettiriladi, agar u keyingi sahifaga o'tsa, to'g'ri bo'linadi. */}
 
-                                <div style={{marginTop: '50px', display: 'flex', justifyContent: 'flex-end'}}>
-                                    <div style={{textAlign: 'center', width: '300px'}}>
-                                        <p>Sinf Rahbari:</p>
-                                        <p style={{fontWeight: 'bold', borderBottom: '1px solid black', display: 'inline-block', padding: '5px 0', minWidth: '200px', marginTop: '20px'}}>
-                                            [F.I.SH kiritilsin]
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
                     </div>
 
