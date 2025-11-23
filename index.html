@@ -40,7 +40,7 @@
             }
         }
 
-        /* PDF Styles - Kiritish/Print Container: PDF export muammosini hal qilish uchun yangilangan */
+        /* PDF Styles - Kiritish/Print Container */
         #print-container {
             position: absolute;
             left: 0;
@@ -49,20 +49,18 @@
             height: 297mm; /* A4 height */
             z-index: -9999;
             pointer-events: none;
-            visibility: hidden; /* Ishonchli yashirish usuli */
+            visibility: hidden; 
             box-sizing: border-box;
         }
 
-        /*
-        PDF Content Class: html2pdf-content - Barcha kontent uchun
-        */
+        /* PDF Content Class: html2pdf-content - Barcha kontent uchun */
         #pdf-content {
             width: 100%;
             background: white;
             font-family: 'Times New Roman', serif;
             color: black;
             box-sizing: border-box;
-            padding: 25mm 20mm; /* A4 print margin simulation (top/bottom, left/right) */
+            padding: 25mm 20mm; /* A4 print margin simulation */
             min-height: 297mm; /* Ensures proper height calculation */
         }
         
@@ -75,18 +73,18 @@
         .pdf-table th, .pdf-table td {
             border: 1px solid #000;
             padding: 4px 6px; 
-            font-size: 11pt; /* Kichikroq shrift, jurnalga o'xshash */
+            font-size: 11pt; 
             vertical-align: middle;
             text-align: center;
             height: 30px; 
             line-height: 1.2;
         }
         .pdf-table th {
-            background-color: #e5e5e5; /* Yaxshiroq ko'rinish uchun */
+            background-color: #e5e5e5; 
             font-weight: bold;
         }
         .pdf-table td:nth-child(2) {
-            text-align: left; /* F.I.SH chapga tekislangan */
+            text-align: left; 
             font-weight: normal;
         }
 
@@ -101,8 +99,6 @@
         .pdf-text-red { color: #991b1b; font-weight: bold; }
         .pdf-text-yellow { color: #854d0e; font-weight: bold; }
         .pdf-text-blue { color: #1e40af; font-weight: bold; }
-        .pdf-text-purple { color: #5B21B6; font-weight: bold; }
-
     </style>
 </head>
 <body>
@@ -135,7 +131,7 @@
             { id: 20, name: "Adxamova Dilnoza" }
         ];
         
-        // "Abdukarimova Muhlisa" o'quvchisi olib tashlandi va ID'lar qayta tartiblandi
+        // O'quvchilar ro'yxatini tozalash va ID'larni qayta tartiblash
         const filteredStudents = INITIAL_STUDENTS_BASE
             .filter(s => s.name !== "Abdukarimova Muhlisa")
             .map((s, index) => ({ ...s, id: index + 1 })); 
@@ -148,7 +144,6 @@
             Edit: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>,
             Download: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
             Clock: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            // Trash ikonkasi olib tashlandi
         };
 
         const getFormattedDate = () => {
@@ -160,56 +155,115 @@
         };
 
         function App() {
+            const todayDate = getFormattedDate(); // Bugungi sana (DD.MM.YYYY formatda)
+
             // --- STATE MANAGEMENT ---
             const [students, setStudents] = useState(() => {
                 const s = localStorage.getItem('students_list');
                 return s ? JSON.parse(s) : INITIAL_STUDENTS; 
             });
+            
+            // Oxirgi davomat qayd qilingan sana
+            const [lastAttendanceDate, setLastAttendanceDate] = useState(() => {
+                return localStorage.getItem('last_attendance_date') || todayDate;
+            });
+
             const [attendance, setAttendance] = useState(() => {
+                // Agar bugun yangi kun bo'lsa, davomatni nolga tenglaymiz, aks holda, saqlangan ma'lumotni yuklaymiz
+                if (localStorage.getItem('last_attendance_date') !== todayDate) {
+                    return {};
+                }
                 const a = localStorage.getItem('attendance_data');
                 return a ? JSON.parse(a) : {};
             });
+            
             const [missedLessons, setMissedLessons] = useState(() => {
+                // Agar bugun yangi kun bo'lsa, dars soatlarini nolga tenglaymiz
+                if (localStorage.getItem('last_attendance_date') !== todayDate) {
+                    return {};
+                }
                 const m = localStorage.getItem('missed_lessons');
                 return m ? JSON.parse(m) : {};
             });
 
-            const [currentDate] = useState(getFormattedDate());
+            const [currentDate] = useState(todayDate);
             const [isGenerating, setIsGenerating] = useState(false);
 
-            // Modal states: Faqat kerakli modallar qoldirildi
             const [editModal, setEditModal] = useState(null);
             const [lessonModal, setLessonModal] = useState(null);
-            // deleteModal va addModal olib tashlandi
 
-            // --- DATA PERSISTENCE ---
-            useEffect(() => { localStorage.setItem('students_list', JSON.stringify(students)); }, [students]);
-            useEffect(() => { localStorage.setItem('attendance_data', JSON.stringify(attendance)); }, [attendance]);
-            useEffect(() => { localStorage.setItem('missed_lessons', JSON.stringify(missedLessons)); }, [missedLessons]);
+            // --- DATE CHECK AND RESET EFFECT ---
+            useEffect(() => {
+                // 1. Agar oxirgi saqlangan sana bugungi sana bilan mos kelmasa (yangi kun)
+                if (lastAttendanceDate !== todayDate) {
+                    console.log(`New day detected. Resetting attendance from ${lastAttendanceDate} to ${todayDate}.`);
+                    
+                    // a) Attendance va missedLessons ma'lumotlarini obnul qilish
+                    setAttendance({});
+                    setMissedLessons({});
+                    
+                    // b) Oxirgi sana va ma'lumotlarni saqlash
+                    localStorage.setItem('last_attendance_date', todayDate);
+                    setLastAttendanceDate(todayDate); // State'ni yangilash
+                    
+                    // localStorage'dan avvalgi kun ma'lumotlarini o'chirish
+                    localStorage.removeItem('attendance_data');
+                    localStorage.removeItem('missed_lessons');
+                } else {
+                    console.log(`Same day: ${todayDate}. Loading previous attendance data.`);
+                }
+            }, [lastAttendanceDate, todayDate]); // Komponent yuklanganda bir marta ishga tushadi
+
+            // --- DATA PERSISTENCE (Saqlash) ---
+            useEffect(() => { 
+                localStorage.setItem('students_list', JSON.stringify(students)); 
+            }, [students]);
+            
+            useEffect(() => { 
+                // Faqat davomat o'zgarganda ma'lumotlarni saqlash
+                localStorage.setItem('attendance_data', JSON.stringify(attendance)); 
+                // Sanani har qanday o'zgarishda yangilash (agar u kun ichida o'zgartirilgan bo'lsa)
+                localStorage.setItem('last_attendance_date', todayDate);
+            }, [attendance, todayDate]);
+            
+            useEffect(() => { 
+                localStorage.setItem('missed_lessons', JSON.stringify(missedLessons)); 
+            }, [missedLessons]);
 
             // --- LOGIC ---
 
             // Toggle attendance status
             const toggleStatus = (id, status) => {
                 setAttendance(prev => {
+                    const isCurrentlySoatli = prev[id] === 'darsda_yoq_soatli';
+                    
+                    // Agar tanlangan status hozirgi status bilan bir xil bo'lsa, uni olib tashlash (Bor dan boshqa statuslar uchun)
                     if (prev[id] === status) {
                         const next = { ...prev };
                         delete next[id];
+                        // Agar status o'chirilsa, soatli yo'q ma'lumotlari ham tozalanishi kerak
+                        if (isCurrentlySoatli) {
+                             setMissedLessons(prevL => {
+                                const nextL = { ...prevL };
+                                delete nextL[id];
+                                return nextL;
+                            });
+                        }
                         return next;
                     }
                     
-                    // Agar "Bor" deb belgilansa, soatli yo'qlarni tozalash
-                    if (status === 'bor') {
+                    // Agar "Bor" dan boshqa status tanlansa, soatlarni obnul qilish
+                    if (status !== 'bor') {
                         setMissedLessons(prevL => {
                             const nextL = { ...prevL };
                             delete nextL[id];
                             return nextL;
                         });
                     }
-                    
-                    // Agar to'liq yo'q statuslari tanlansa, soatli yo'qlarni tozalash
-                    if (status !== 'bor') {
-                        setMissedLessons(prevL => {
+
+                    // Agar soatli yo'q holati o'chirilmasdan, boshqa status tanlansa
+                    if (isCurrentlySoatli && status !== 'bor') {
+                         setMissedLessons(prevL => {
                             const nextL = { ...prevL };
                             delete nextL[id];
                             return nextL;
@@ -225,6 +279,7 @@
                 setMissedLessons(prev => {
                     const current = prev[studentId] || [];
                     let updated;
+                    
                     if (current.includes(lessonNum)) {
                         updated = current.filter(l => l !== lessonNum);
                     } else {
@@ -249,15 +304,13 @@
                 });
             };
 
-            // Faqat Tahrirlash operatsiyasi qoldirildi
+            // Faqat Tahrirlash operatsiyasi
             const handleEdit = (updatedStudent) => {
                 if(!updatedStudent.name.trim()) return;
                 setStudents(students.map(s => s.id === updatedStudent.id ? updatedStudent : s));
                 setEditModal(null);
             };
             
-            // handleDelete funksiyasi va deleteModal olib tashlandi
-
             // --- PDF EXPORT FUNCTION (Optimized for A4 and page breaks) ---
             const handleExport = async () => {
                 setIsGenerating(true);
@@ -343,18 +396,22 @@
                 
                 // Maxsus holat: soatli yo'q bo'lsa, "Bor" dan boshqa tugmalar faolsizlangan ko'rinadi
                 if (currentStatus === 'darsda_yoq_soatli' && key !== 'bor') {
-                    return 'bg-gray-50 text-gray-400 border-transparent';
+                    // Agar soatli yo'q bo'lsa, boshqa to'liq yo'q statuslari nofaol ko'rinadi
+                    return 'bg-gray-50 text-gray-400 border-transparent cursor-not-allowed opacity-60';
                 }
                 
+                // Agar status soatli yo'q bo'lsa, "Bor" nofaol ko'rinadi
                 if (currentStatus === 'darsda_yoq_soatli' && key === 'bor') {
-                     return 'bg-gray-50 text-gray-400 border-transparent';
+                     return 'bg-gray-50 text-gray-400 border-transparent cursor-not-allowed opacity-60';
                 }
                 
+                // Agar status tanlangan bo'lsa, yorqin ko'rinadi
                 if (currentStatus === key) {
                     return btnData.color + ' border-current shadow-sm ring-2 ring-offset-1 ring-gray-200';
                 }
                 
-                return 'bg-gray-50 text-gray-400 border-transparent';
+                // Standart holat
+                return 'bg-gray-50 text-gray-400 border-transparent hover:bg-gray-100';
             };
 
 
@@ -383,18 +440,22 @@
                         {/* O'quvchilar ro'yxati */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                             {students.map((s, i) => {
-                                const isMissedHours = attendance[s.id] === 'darsda_yoq_soatli';
+                                const currentStatus = attendance[s.id];
+                                const isMissedHours = currentStatus === 'darsda_yoq_soatli';
                                 const currentLessons = missedLessons[s.id] || [];
                                 
+                                // To'liq kun yo'q (Bor va Soatli yo'q emas) bo'lsa
+                                const isFullDayAbsent = currentStatus && currentStatus !== 'bor' && currentStatus !== 'darsda_yoq_soatli';
+                                
                                 return (
-                                <div key={s.id} className="ios-card p-4 h-full flex flex-col justify-between transition-all duration-200 hover:border-blue-300">
+                                <div key={s.id} className={`ios-card p-4 h-full flex flex-col justify-between transition-all duration-200 hover:border-blue-300 ${isFullDayAbsent ? 'border-l-4 border-red-500' : isMissedHours ? 'border-l-4 border-purple-500' : 'border-l-4 border-transparent'}`}>
                                     <div className="flex justify-between items-center mb-3">
                                         <div className="flex items-center gap-3 w-2/3">
                                             <span className="text-gray-400 font-bold text-sm w-5">{i+1}.</span>
                                             <h3 className="font-semibold text-gray-900 truncate text-lg">{s.name}</h3>
                                         </div>
                                         <div className="flex gap-1">
-                                            {/* Faqat Tahrirlash tugmasi qoldirildi */}
+                                            {/* Tahrirlash tugmasi */}
                                             <button onClick={() => setEditModal({id: s.id, name: s.name})} className="p-2 bg-gray-100 hover:bg-gray-200 text-blue-500 rounded-full transition-colors"><Icons.Edit /></button>
                                         </div>
                                     </div>
@@ -407,6 +468,7 @@
                                                         key={btn.key}
                                                         onClick={() => toggleStatus(s.id, btn.key)}
                                                         className={`py-2 rounded-lg text-[10px] sm:text-xs font-bold border transition-all active:scale-95 ${getButtonClass(s.id, btn.key)}`}
+                                                        disabled={isMissedHours && btn.key !== 'bor'} // Soatli yo'q bo'lsa, to'liq kun yo'q tugmalarini o'chirish
                                                     >
                                                         {btn.label}
                                                     </button>
@@ -415,9 +477,9 @@
                                             
                                             <button 
                                                 onClick={() => setLessonModal({id: s.id, name: s.name})}
-                                                className={`w-10 flex items-center justify-center rounded-lg border transition-all hover:bg-gray-100 ${currentLessons.length ? 'bg-purple-100 text-purple-600 border-purple-300 shadow-sm' : 'bg-gray-50 text-gray-400 border-transparent'}`}
+                                                className={`w-10 flex items-center justify-center rounded-lg border transition-all active:scale-95 hover:bg-gray-100 ${currentLessons.length ? 'bg-purple-100 text-purple-600 border-purple-300 shadow-sm' : 'bg-gray-50 text-gray-400 border-transparent'}`}
                                                 title="Dars qoldirish soatlari"
-                                                disabled={attendance[s.id] && attendance[s.id] !== 'darsda_yoq_soatli' && attendance[s.id] !== 'bor'}
+                                                disabled={isFullDayAbsent} // To'liq kun yo'q bo'lsa, soat tanlashni o'chirish
                                             >
                                                 <Icons.Clock />
                                             </button>
@@ -428,9 +490,9 @@
                                                 Darsda yo'q soatlar: <span className="font-bold">{currentLessons.join(', ')}</span>
                                             </div>
                                         )}
-                                        {attendance[s.id] && attendance[s.id] !== 'bor' && attendance[s.id] !== 'darsda_yoq_soatli' && (
+                                        {isFullDayAbsent && (
                                              <div className="mt-2 text-xs text-red-600 font-medium px-2 bg-red-50 py-1 rounded-md">
-                                                To'liq kun yo'q (sababi: {STATUS_BTNS.find(b => b.key === attendance[s.id])?.label})
+                                                To'liq kun yo'q (sababi: {STATUS_BTNS.find(b => b.key === currentStatus)?.label})
                                             </div>
                                         )}
                                     </div>
@@ -478,8 +540,6 @@
                                 </div>
                             )}
 
-                            {/* O'chirish Modali olib tashlandi */}
-
                             {/* Dars Soatlari Modali */}
                             {lessonModal && (
                                 <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl transition-transform duration-300 ease-out scale-100">
@@ -493,7 +553,7 @@
                                                 <button
                                                     key={num}
                                                     onClick={() => toggleLesson(lessonModal.id, num)}
-                                                    className={`aspect-square rounded-xl font-bold text-xl transition-all ${isMissed ? 'bg-purple-600 text-white shadow-lg scale-105' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}
+                                                    className={`aspect-square rounded-xl font-bold text-xl transition-all active:scale-95 ${isMissed ? 'bg-purple-600 text-white shadow-lg scale-105' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}
                                                 >
                                                     {num}
                                                 </button>
@@ -506,11 +566,11 @@
                         </div>
                     )}
 
-                    {/* PDF Template - YASHIRINGAN KONTENT (Endi visibility: hidden orqali yashirilgan) */}
+                    {/* PDF Template - YASHIRINGAN KONTENT */}
                     <div id="print-container">
                         <div id="pdf-content" className="html2pdf-content">
                             
-                            {/* Sarlavha Qismi - Sahifani bo'lishga yo'l qo'yilmaydi */}
+                            {/* Sarlavha Qismi */}
                             <div className="border-b-2 border-black pb-3 mb-4 flex justify-between items-end avoid-break" style={{fontSize: '11pt'}}>
                                 <div>
                                     <h1 style={{fontSize: '18pt', fontWeight: 'bold', textTransform: 'uppercase'}}>
