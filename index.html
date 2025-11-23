@@ -40,15 +40,16 @@
             }
         }
 
-        /* PDF Styles - Kiritish/Print Container */
+        /* PDF Styles - Kiritish/Print Container: PDF export muammosini hal qilish uchun yangilangan */
         #print-container {
-            position: fixed;
-            left: -10000px;
+            position: absolute;
+            left: 0;
             top: 0;
             width: 210mm; /* A4 width */
             height: 297mm; /* A4 height */
-            opacity: 0;
             z-index: -9999;
+            pointer-events: none;
+            visibility: hidden; /* Ishonchli yashirish usuli */
             box-sizing: border-box;
         }
 
@@ -114,7 +115,7 @@
         const INITIAL_STUDENTS_BASE = [
             { id: 1, name: "Ahmadaliyeva Shahlo" },
             { id: 2, name: "Azimova Gulchehra" },
-            { id: 3, name: "Abdukarimova Muhlisa" }, // O'chiriladigan o'quvchi
+            { id: 3, name: "Abdukarimova Muhlisa" }, 
             { id: 4, name: "Husanova Sug'diyona" },
             { id: 5, name: "Gafurova Yodgora" },
             { id: 6, name: "Jo'raxonov Mansurxon" },
@@ -134,10 +135,10 @@
             { id: 20, name: "Adxamova Dilnoza" }
         ];
         
-        // So'rovga binoan "Abdukarimova Muhlisa" o'quvchisi olib tashlandi va ID'lar qayta tartiblandi
+        // "Abdukarimova Muhlisa" o'quvchisi olib tashlandi va ID'lar qayta tartiblandi
         const filteredStudents = INITIAL_STUDENTS_BASE
             .filter(s => s.name !== "Abdukarimova Muhlisa")
-            .map((s, index) => ({ ...s, id: index + 1 })); // ID'larni yangilash
+            .map((s, index) => ({ ...s, id: index + 1 })); 
 
         const INITIAL_STUDENTS = filteredStudents;
 
@@ -145,9 +146,9 @@
         // --- IKONKALAR ---
         const Icons = {
             Edit: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>,
-            Trash: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
             Download: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
             Clock: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            // Trash ikonkasi olib tashlandi
         };
 
         const getFormattedDate = () => {
@@ -162,7 +163,6 @@
             // --- STATE MANAGEMENT ---
             const [students, setStudents] = useState(() => {
                 const s = localStorage.getItem('students_list');
-                // Agar saqlangan ma'lumot mavjud bo'lsa, ularni, aks holda yangi filtrlangan ro'yxatni ishlatish
                 return s ? JSON.parse(s) : INITIAL_STUDENTS; 
             });
             const [attendance, setAttendance] = useState(() => {
@@ -177,12 +177,10 @@
             const [currentDate] = useState(getFormattedDate());
             const [isGenerating, setIsGenerating] = useState(false);
 
-            // Modal states
+            // Modal states: Faqat kerakli modallar qoldirildi
             const [editModal, setEditModal] = useState(null);
-            const [deleteModal, setDeleteModal] = useState(null);
             const [lessonModal, setLessonModal] = useState(null);
-            
-            // "addModal" holati olib tashlandi
+            // deleteModal va addModal olib tashlandi
 
             // --- DATA PERSISTENCE ---
             useEffect(() => { localStorage.setItem('students_list', JSON.stringify(students)); }, [students]);
@@ -209,7 +207,7 @@
                         });
                     }
                     
-                    // Agar to'liq yo'q statuslari (Yoq, Sababli, Oilaviy) tanlansa, soatli yo'qlarni tozalash
+                    // Agar to'liq yo'q statuslari tanlansa, soatli yo'qlarni tozalash
                     if (status !== 'bor') {
                         setMissedLessons(prevL => {
                             const nextL = { ...prevL };
@@ -251,44 +249,37 @@
                 });
             };
 
-            // CRUD operations (Add funksiyasi olib tashlandi)
+            // Faqat Tahrirlash operatsiyasi qoldirildi
             const handleEdit = (updatedStudent) => {
                 if(!updatedStudent.name.trim()) return;
                 setStudents(students.map(s => s.id === updatedStudent.id ? updatedStudent : s));
                 setEditModal(null);
             };
             
-            const handleDelete = () => {
-                // O'quvchini ro'yxatdan o'chirish
-                const newStudents = students.filter(s => s.id !== deleteModal.id);
-                // ID'larni qayta tartiblash (Bu kerak, chunki T/r raqamlari ID'ga bog'liq emas, faqat ro'yxatdagi tartibga)
-                const reindexedStudents = newStudents.map((s, index) => ({ ...s, id: index + 1 }));
-                setStudents(reindexedStudents);
-
-                // Davomat va dars soatlar ma'lumotlarini tozalash
-                const newAtt = { ...attendance }; delete newAtt[deleteModal.id]; setAttendance(newAtt);
-                const newMiss = { ...missedLessons }; delete newMiss[deleteModal.id]; setMissedLessons(newMiss);
-                setDeleteModal(null);
-            };
+            // handleDelete funksiyasi va deleteModal olib tashlandi
 
             // --- PDF EXPORT FUNCTION (Optimized for A4 and page breaks) ---
             const handleExport = async () => {
                 setIsGenerating(true);
                 const element = document.getElementById('pdf-content'); 
-                const container = document.getElementById('print-container');
+                
                 if (!element) {
                     setIsGenerating(false);
                     return;
                 }
 
-                container.classList.add('generating');
-                
+                // Elementni ko'rinadigan joyda (lekin yashirin) tayyorlash
+                const container = document.getElementById('print-container');
+                container.style.visibility = 'visible';
+                container.style.position = 'absolute';
+                container.style.zIndex = '9999';
+
                 const opt = {
                     margin:       [10, 10, 10, 10], // Margins: [top, left, bottom, right] in mm
                     filename:     `Davomat_11G_${currentDate}.pdf`,
                     image:        { type: 'jpeg', quality: 0.98 },
                     html2canvas:  { 
-                        scale: 3, // Lower scale for performance, 3 is usually enough for clarity
+                        scale: 3, 
                         useCORS: true, 
                         logging: false 
                     },
@@ -300,12 +291,15 @@
                 };
 
                 try {
-                    await new Promise(r => setTimeout(r, 100)); // Delay for rendering hidden content
+                    await new Promise(r => setTimeout(r, 150)); // Kichik pauza renderingni kutish uchun
                     await html2pdf().set(opt).from(element).save();
                 } catch (e) {
                     console.error("PDF Export Error:", e);
                 } finally {
-                    container.classList.remove('generating');
+                    // Export tugagandan so'ng kontentni yana yashirish
+                    container.style.visibility = 'hidden';
+                    container.style.position = 'absolute';
+                    container.style.zIndex = '-9999';
                     setIsGenerating(false);
                 }
             };
@@ -347,12 +341,11 @@
                 const currentStatus = attendance[studentId];
                 const btnData = STATUS_BTNS.find(b => b.key === key);
                 
-                // Maxsus holat: agar status soatli bo'lsa, barcha boshqa tugmalarni oddiy ko'rsatish
+                // Maxsus holat: soatli yo'q bo'lsa, "Bor" dan boshqa tugmalar faolsizlangan ko'rinadi
                 if (currentStatus === 'darsda_yoq_soatli' && key !== 'bor') {
                     return 'bg-gray-50 text-gray-400 border-transparent';
                 }
                 
-                // Maxsus holat: soatli yo'q bo'lsa, faqat "Bor" tugmasi tanlanmagan holatda bo'ladi
                 if (currentStatus === 'darsda_yoq_soatli' && key === 'bor') {
                      return 'bg-gray-50 text-gray-400 border-transparent';
                 }
@@ -401,9 +394,8 @@
                                             <h3 className="font-semibold text-gray-900 truncate text-lg">{s.name}</h3>
                                         </div>
                                         <div className="flex gap-1">
-                                            {/* Faqat F.I.SH. tahrirlash qoldirildi */}
+                                            {/* Faqat Tahrirlash tugmasi qoldirildi */}
                                             <button onClick={() => setEditModal({id: s.id, name: s.name})} className="p-2 bg-gray-100 hover:bg-gray-200 text-blue-500 rounded-full transition-colors"><Icons.Edit /></button>
-                                            <button onClick={() => setDeleteModal({id: s.id, name: s.name})} className="p-2 bg-gray-100 hover:bg-gray-200 text-red-500 rounded-full transition-colors"><Icons.Trash /></button>
                                         </div>
                                     </div>
 
@@ -448,8 +440,6 @@
                         </div>
                     </div>
 
-                    {/* Qo'shish Tugmasi Olib Tashlandi */}
-
                     {/* Yuklash Ekrani */}
                     {isGenerating && (
                         <div className="fixed inset-0 bg-black/50 z-50 flex flex-col items-center justify-center text-white backdrop-blur-sm">
@@ -458,8 +448,8 @@
                         </div>
                     )}
 
-                    {/* Modallar (Tahrirlash, O'chirish, Dars Soatlari) */}
-                    {(editModal || deleteModal || lessonModal) && ( // addModal olib tashlandi
+                    {/* Modallar (Tahrirlash, Dars Soatlari) */}
+                    {(editModal || lessonModal) && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm transition-opacity duration-200">
                             
                             {/* Tahrirlash Modali */}
@@ -488,17 +478,7 @@
                                 </div>
                             )}
 
-                            {/* O'chirish Modali */}
-                            {deleteModal && (
-                                <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl text-center transition-transform duration-300 ease-out scale-100">
-                                    <h3 className="text-xl font-bold mb-2">O'chirish</h3>
-                                    <p className="text-gray-500 mb-6">{deleteModal.name} o'chirilsinmi?</p>
-                                    <div className="flex gap-3">
-                                        <button onClick={() => setDeleteModal(null)} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl font-bold transition-colors">Yo'q</button>
-                                        <button onClick={handleDelete} className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold transition-colors">Ha</button>
-                                    </div>
-                                </div>
-                            )}
+                            {/* O'chirish Modali olib tashlandi */}
 
                             {/* Dars Soatlari Modali */}
                             {lessonModal && (
@@ -526,7 +506,7 @@
                         </div>
                     )}
 
-                    {/* PDF Template - YASHIRINGAN KONTENT (Optimallashtirilgan) */}
+                    {/* PDF Template - YASHIRINGAN KONTENT (Endi visibility: hidden orqali yashirilgan) */}
                     <div id="print-container">
                         <div id="pdf-content" className="html2pdf-content">
                             
