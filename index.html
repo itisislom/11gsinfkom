@@ -42,15 +42,15 @@
 
         /* PDF Styles - Kiritish/Print Container */
         #print-container {
-            position: fixed;
-            left: -10000px; /* Скрывает контейнер вне экрана */
+            position: absolute; /* Changed to absolute */
+            left: 0;
             top: 0;
             width: 210mm; /* A4 width */
             height: 297mm; /* A4 height */
-            opacity: 0;
-            z-index: -9999;
             box-sizing: border-box;
-            /* Важно: должен быть внутри компонента React для корректного рендеринга данных */
+            /* Используем display: none для скрытия. Будет временно 'block' во время экспорта. */
+            display: none; 
+            z-index: -9999;
         }
 
         /*
@@ -177,6 +177,7 @@
             const [lessonModal, setLessonModal] = useState(null);
 
             // --- DATA PERSISTENCE ---
+            // Сохранение данных в localStorage при изменении состояния
             useEffect(() => { localStorage.setItem('students_list', JSON.stringify(students)); }, [students]);
             useEffect(() => { localStorage.setItem('attendance_data', JSON.stringify(attendance)); }, [attendance]);
             useEffect(() => { localStorage.setItem('missed_lessons', JSON.stringify(missedLessons)); }, [missedLessons]);
@@ -264,22 +265,26 @@
             // --- PDF EXPORT FUNCTION (Optimized for A4 and page breaks) ---
             const handleExport = async () => {
                 setIsGenerating(true);
-                // Используем элемент, который теперь рендерится React'ом
+                const container = document.getElementById('print-container');
                 const element = document.getElementById('pdf-content'); 
                 
-                if (!element) {
-                    console.error("PDF content element not found.");
+                if (!element || !container) {
+                    console.error("PDF content or container element not found.");
                     setIsGenerating(false);
                     return;
                 }
-
                 
+                // 1. Временно показываем контейнер, чтобы браузер его отрендерил корректно
+                container.style.display = 'block';
+                container.style.opacity = 1; // Убедиться, что он видим для рендеринга
+                
+                // Настройки PDF
                 const opt = {
                     margin:       [10, 10, 10, 10], // Margins: [top, left, bottom, right] in mm
                     filename:     `Davomat_11G_${currentDate}.pdf`,
                     image:        { type: 'jpeg', quality: 0.98 },
                     html2canvas:  { 
-                        scale: 3, // Lower scale for performance, 3 is usually enough for clarity
+                        scale: 3, 
                         useCORS: true, 
                         logging: false 
                     },
@@ -291,18 +296,20 @@
                 };
 
                 try {
-                    // Небольшая задержка, чтобы браузер успел отрисовать скрытый элемент
+                    // 2. Ждем небольшой промежуток для завершения перерисовки DOM
                     await new Promise(r => setTimeout(r, 100)); 
                     await html2pdf().set(opt).from(element).save();
                 } catch (e) {
                     console.error("PDF Export Error:", e);
                 } finally {
+                    // 3. Скрываем его снова
+                    container.style.display = 'none';
+                    container.style.opacity = 0;
                     setIsGenerating(false);
                 }
             };
 
             // --- PDF STATUS FORMATTER ---
-            // Возвращает чистый JSX, который теперь корректно рендерится в скрытом элементе React
             const getStatusTextPDF = (id) => {
                 const status = attendance[id];
                 const missed = missedLessons[id] || [];
@@ -346,7 +353,7 @@
                     return 'bg-gray-50 text-gray-400 border-transparent opacity-50 cursor-not-allowed';
                 }
                 
-                // Если выбран полный статус отсутствия (yoq, sababli, oilaviy), отключаем "Bor" и почасовую кнопку (они уже отключены в другом месте)
+                // Если выбран полный статус отсутствия (yoq, sababli, oilaviy), отключаем "Bor"
                 if (currentStatus && currentStatus !== 'bor' && key === 'bor') {
                     return 'bg-gray-50 text-gray-400 border-transparent opacity-50 cursor-not-allowed';
                 }
@@ -530,16 +537,17 @@
                         </div>
                     )}
 
-                    {/* PDF Template - YASHIRINGAN KONTENT (Теперь внутри компонента React) */}
+                    {/* PDF Template - YASHIRINGAN KONTENT */}
                     <div id="print-container" style={{
                         position: 'fixed',
-                        left: '-10000px',
+                        left: 0,
                         top: 0,
                         width: '210mm',
                         height: '297mm',
+                        boxSizing: 'border-box',
+                        display: 'none', /* Начально скрыто */
                         opacity: 0,
-                        zIndex: -9999,
-                        boxSizing: 'border-box'
+                        zIndex: -9999
                     }}>
                         <div id="pdf-content" className="html2pdf-content">
                             
@@ -568,6 +576,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    {/* Этот блок использует актуальный state React: students, attendance, missedLessons */}
                                     {students.map((s, i) => {
                                         const content = getStatusTextPDF(s.id);
                                         const isAbsent = attendance[s.id] && attendance[s.id] !== 'bor';
@@ -577,7 +586,6 @@
                                                 <td style={{fontWeight: 'bold'}}>{i + 1}</td>
                                                 <td>{s.name}</td>
                                                 <td>
-                                                    {/* Важно: В JSX-среде React вставляем JSX, возвращаемый функцией */}
                                                     {content}
                                                 </td>
                                             </tr>
@@ -585,9 +593,6 @@
                                     })}
                                 </tbody>
                             </table>
-                            
-                            {/* Дополнительные примечания - в соответствии с последним запросом убраны */}
-
                         </div>
                     </div>
 
