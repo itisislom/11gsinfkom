@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>11 - "G" Sinfkom Jurnali</title>
+    
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233B82F6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 11.08V12a10 10 0 1 1-5.93-9.14'%3E%3C/path%3E%3Cpolyline points='22 4 12 14.01 9 11.01'%3E%3C/polyline%3E%3C/svg%3E">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <style>
+        body {
+            background-color: #F2F2F7;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            min-height: 100vh;
+        }
+
+        /* Анимации */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .animate-fade-in { animation: fadeIn 0.2s ease-out; }
+        .animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+
+        /* PDF Styles - ТЕПЕРЬ ПОЛНОСТЬЮ СКРЫТЫ ЗА ЭКРАНОМ */
+        #print-container {
+            position: fixed;
+            left: -10000px; /* Убираем далеко за пределы экрана */
+            top: 0;
+            width: 800px; 
+            height: auto;
+            opacity: 0; /* Прозрачный */
+            z-index: -9999;
+        }
+        
+        /* Когда идет генерация, мы делаем его "видимым" для браузера (opacity 1), 
+           но он все равно остается за пределами экрана (left -10000px), 
+           поэтому пользователь его не видит */
+        #print-container.generating {
+            opacity: 1; 
+        }
+
+        .pdf-page {
+            width: 800px;
+            min-height: 1100px;
+            background: white;
+            padding: 40px;
+            font-family: 'Times New Roman', serif;
+            color: black;
+        }
+        .pdf-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .pdf-table th, .pdf-table td {
+            border: 1px solid #000;
+            padding: 8px;
+            font-size: 14px;
+            vertical-align: middle;
+        }
+        
+        .pdf-text-green { color: #166534; font-weight: bold; }
+        .pdf-text-red { color: #991b1b; font-weight: bold; }
+        .pdf-text-yellow { color: #854d0e; font-weight: bold; }
+        .pdf-text-blue { color: #1e40af; font-weight: bold; }
+
+        /* Карточка ученика */
+        .ios-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        /* Эффект наведения на ПК */
+        @media (min-width: 768px) {
+            .ios-card:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        
+        const INITIAL_STUDENTS = [
+            { id: 1, name: "Ahmadaliyeva Shahlo" },
+            { id: 2, name: "Azimova Gulchehra" },
+            { id: 3, name: "Abdukarimova Muhlisa" },
+            { id: 4, name: "Husanova Sug'diyona" },
+            { id: 5, name: "Gafurova Yodgora" },
+            { id: 6, name: "Jo'raxonov Mansurxon" },
+            { id: 7, name: "Kamoliddinov Sardor" },
+            { id: 8, name: "Ochildiyeva Mushtaribonu" },
+            { id: 9, name: "Sadriddinov Islom" },
+            { id: 10, name: "Sagdiyeva Laziza" },
+            { id: 11, name: "Toshmurodov Behruz" },
+            { id: 12, name: "Tuykulova Shohizoda" },
+            { id: 13, name: "Xaliknazarova Ruxshona" },
+            { id: 14, name: "Xoliqova Dinara" },
+            { id: 15, name: "Xashimov Temur" },
+            { id: 16, name: "Yaxyoyeva Kamola" },
+            { id: 17, name: "Ziyayeva Dilnoza" },
+            { id: 18, name: "Bekmuratov Iskandar" },
+            { id: 19, name: "Nazarova Iroda" },
+            { id: 20, name: "Adxamova Dilnoza" }
+        ];
+
+        const Icons = {
+            Edit: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>,
+            Trash: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
+            Plus: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+            Download: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
+            Clock: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        };
+
+        const getFormattedDate = () => {
+            const d = new Date();
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const year = d.getFullYear();
+            return `${day}.${month}.${year}`;
+        };
+
+        function App() {
+            const [students, setStudents] = useState(() => {
+                const s = localStorage.getItem('students_list');
+                return s ? JSON.parse(s) : INITIAL_STUDENTS;
+            });
+            const [attendance, setAttendance] = useState(() => {
+                const a = localStorage.getItem('attendance_data');
+                return a ? JSON.parse(a) : {};
+            });
+            const [missedLessons, setMissedLessons] = useState(() => {
+                const m = localStorage.getItem('missed_lessons');
+                return m ? JSON.parse(m) : {};
+            });
+
+            const [currentDate] = useState(getFormattedDate());
+            const [isGenerating, setIsGenerating] = useState(false);
+
+            const [editModal, setEditModal] = useState(null);
+            const [deleteModal, setDeleteModal] = useState(null);
+            const [addModal, setAddModal] = useState(false);
+            const [lessonModal, setLessonModal] = useState(null);
+
+            useEffect(() => { localStorage.setItem('students_list', JSON.stringify(students)); }, [students]);
+            useEffect(() => { localStorage.setItem('attendance_data', JSON.stringify(attendance)); }, [attendance]);
+            useEffect(() => { localStorage.setItem('missed_lessons', JSON.stringify(missedLessons)); }, [missedLessons]);
+
+            const toggleStatus = (id, status) => {
+                setAttendance(prev => {
+                    if (prev[id] === status) {
+                        const next = { ...prev };
+                        delete next[id];
+                        return next;
+                    }
+                    if (status === 'bor') {
+                        setMissedLessons(prevL => {
+                            const nextL = { ...prevL };
+                            delete nextL[id];
+                            return nextL;
+                        });
+                    }
+                    return { ...prev, [id]: status };
+                });
+            };
+
+            const toggleLesson = (studentId, lessonNum) => {
+                setMissedLessons(prev => {
+                    const current = prev[studentId] || [];
+                    let updated;
+                    if (current.includes(lessonNum)) {
+                        updated = current.filter(l => l !== lessonNum);
+                    } else {
+                        updated = [...current, lessonNum].sort();
+                    }
+                    if (updated.length === 0) {
+                        const next = { ...prev };
+                        delete next[studentId];
+                        return next;
+                    }
+                    setAttendance(prevA => {
+                         if (prevA[studentId] === 'bor') {
+                             const nextA = {...prevA};
+                             delete nextA[studentId];
+                             return nextA;
+                         }
+                         return prevA;
+                    });
+                    return { ...prev, [studentId]: updated };
+                });
+            };
+
+            const handleAdd = (name) => {
+                if(!name.trim()) return;
+                const newId = students.length > 0 ? Math.max(...students.map(s => s.id)) + 1 : 1;
+                setStudents([...students, { id: newId, name }]);
+                setAddModal(false);
+            };
+            const handleEdit = () => {
+                if(!editModal.name.trim()) return;
+                setStudents(students.map(s => s.id === editModal.id ? { ...s, name: editModal.name } : s));
+                setEditModal(null);
+            };
+            const handleDelete = () => {
+                setStudents(students.filter(s => s.id !== deleteModal.id));
+                const newAtt = { ...attendance }; delete newAtt[deleteModal.id]; setAttendance(newAtt);
+                const newMiss = { ...missedLessons }; delete newMiss[deleteModal.id]; setMissedLessons(newMiss);
+                setDeleteModal(null);
+            };
+
+            const handleExport = async () => {
+                setIsGenerating(true);
+                const element = document.getElementById('pdf-content');
+                const container = document.getElementById('print-container');
+                if (!element) return;
+
+                // Показываем контейнер для скрипта, но он вне экрана
+                container.classList.add('generating');
+                
+                const opt = {
+                    margin:       10,
+                    filename:     `Davomat_11G_${currentDate}.pdf`,
+                    image:        { type: 'jpeg', quality: 0.98 },
+                    html2canvas:  { scale: 2, useCORS: true, logging: false },
+                    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+
+                try {
+                    await new Promise(r => setTimeout(r, 500));
+                    await html2pdf().set(opt).from(element).save();
+                } catch (e) {
+                    alert("Xatolik yuz berdi.");
+                } finally {
+                    container.classList.remove('generating');
+                    setIsGenerating(false);
+                }
+            };
+
+            const getStatusTextPDF = (id) => {
+                const status = attendance[id];
+                const missed = missedLessons[id] || [];
+                
+                if (missed.length > 0) {
+                    const lessonsText = missed.join(', ') + "-soat yo'q";
+                    return <span className="pdf-text-red">Darsda yo'q <br/><span style={{fontWeight:'normal', color:'black', fontSize:'12px'}}>({lessonsText})</span></span>;
+                }
+
+                if (status === 'bor') return <span className="pdf-text-green">Bor</span>;
+                if (status === 'yoq') return <span className="pdf-text-red">Yo'q</span>;
+                if (status === 'sababli') return <span className="pdf-text-yellow">Sababli</span>;
+                if (status === 'oilaviy') return <span className="pdf-text-blue">Oilaviy sharoit</span>;
+
+                return "";
+            };
+
+            const STATUS_BTNS = [
+                { key: 'bor', label: 'Bor', color: 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100' },
+                { key: 'yoq', label: "Yo'q", color: 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' },
+                { key: 'sababli', label: 'Sababli', color: 'bg-yellow-50 text-yellow-600 border-yellow-200 hover:bg-yellow-100' },
+                { key: 'oilaviy', label: 'Oilaviy', color: 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100' }
+            ];
+
+            return (
+                <div className="w-full min-h-screen relative flex flex-col items-center">
+                    
+                    {/* Контейнер приложения - теперь адаптивный */}
+                    <div className="w-full max-w-7xl px-4 pt-6 pb-32">
+                        
+                        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 sticky top-0 bg-[#F2F2F7] z-20 py-4 shadow-sm md:shadow-none md:static rounded-xl px-2">
+                            <div className="mb-4 md:mb-0">
+                                <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Sinf Jurnali</h2>
+                                <h1 className="text-3xl font-bold text-gray-900">11 - "G" Sinf</h1>
+                                <p className="text-sm text-gray-400 font-medium">{currentDate}</p>
+                            </div>
+                            <button 
+                                onClick={handleExport}
+                                disabled={isGenerating}
+                                className="bg-[#007AFF] hover:bg-[#005bb5] text-white px-6 py-3 rounded-full shadow-lg active:scale-95 transition-transform flex items-center gap-2 font-semibold"
+                            >
+                                 {isGenerating ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"/> : <><Icons.Download /> PDF yuklab olish</>}
+                            </button>
+                        </header>
+
+                        {/* Сетка карточек: на телефоне 1 колонка, на планшете 2, на ПК 3 */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                            {students.map((s, i) => (
+                                <div key={s.id} className="ios-card p-4 animate-slide-up h-full flex flex-col justify-between" style={{animationDelay: i*0.01+'s'}}>
+                                    <div className="flex justify-between items-center mb-3">
+                                        <div className="flex items-center gap-3 w-2/3">
+                                            <span className="text-gray-400 font-bold text-sm w-5">{i+1}.</span>
+                                            <h3 className="font-semibold text-gray-900 truncate text-lg">{s.name}</h3>
+                                        </div>
+                                        <div className="flex gap-1">
+                                            <button onClick={() => setEditModal({id: s.id, name: s.name})} className="p-2 bg-gray-100 hover:bg-gray-200 text-blue-500 rounded-full transition-colors"><Icons.Edit /></button>
+                                            <button onClick={() => setDeleteModal({id: s.id, name: s.name})} className="p-2 bg-gray-100 hover:bg-gray-200 text-red-500 rounded-full transition-colors"><Icons.Trash /></button>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <div className="flex gap-2 mb-2">
+                                            <div className="flex-1 grid grid-cols-4 gap-1">
+                                                {STATUS_BTNS.map(btn => (
+                                                    <button
+                                                        key={btn.key}
+                                                        onClick={() => toggleStatus(s.id, btn.key)}
+                                                        className={`py-2 rounded-lg text-[10px] sm:text-xs font-bold border transition-all active:scale-95 ${attendance[s.id] === btn.key ? btn.color + ' border-current shadow-sm ring-2 ring-offset-1 ring-gray-200' : 'bg-gray-50 text-gray-400 border-transparent'}`}
+                                                    >
+                                                        {btn.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            
+                                            <button 
+                                                onClick={() => setLessonModal({id: s.id, name: s.name})}
+                                                className={`w-10 flex items-center justify-center rounded-lg border transition-all hover:bg-gray-100 ${missedLessons[s.id]?.length ? 'bg-purple-100 text-purple-600 border-purple-300 shadow-sm' : 'bg-gray-50 text-gray-400 border-transparent'}`}
+                                                title="Dars qoldirish"
+                                            >
+                                                <Icons.Clock />
+                                            </button>
+                                        </div>
+                                        
+                                        {missedLessons[s.id]?.length > 0 && (
+                                            <div className="mt-2 text-xs text-purple-600 font-medium px-2 bg-purple-50 py-1 rounded-md">
+                                                Darsda yo'q: <span className="font-bold">{missedLessons[s.id].join(', ')} - soatlar</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Плавающая кнопка добавления */}
+                    <div className="fixed bottom-6 w-full flex justify-center pointer-events-none z-10 px-4">
+                        <button onClick={() => setAddModal(true)} className="pointer-events-auto flex items-center gap-2 bg-[#007AFF] hover:bg-[#005bb5] text-white px-8 py-4 rounded-full font-bold shadow-xl active:scale-95 transition-transform text-lg">
+                            <Icons.Plus /> O'quvchi qo'shish
+                        </button>
+                    </div>
+
+                    {/* Загрузочный экран */}
+                    {isGenerating && (
+                        <div className="fixed inset-0 bg-black/50 z-50 flex flex-col items-center justify-center text-white backdrop-blur-sm">
+                            <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mb-4"></div>
+                            <p className="font-bold text-lg">PDF tayyorlanmoqda...</p>
+                        </div>
+                    )}
+
+                    {/* Модалки */}
+                    {(addModal || editModal) && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+                            <div className="bg-white rounded-2xl p-6 w-full max-w-sm animate-slide-up shadow-2xl">
+                                <h3 className="text-xl font-bold mb-4 text-center">{addModal ? "Yangi o'quvchi" : "Tahrirlash"}</h3>
+                                <input 
+                                    autoFocus
+                                    className="w-full bg-gray-100 p-4 rounded-xl text-lg mb-4 outline-none focus:ring-2 focus:ring-[#007AFF]"
+                                    placeholder="F.I.SH"
+                                    defaultValue={editModal ? editModal.name : ""}
+                                    id="studentNameInput"
+                                />
+                                <div className="flex gap-3">
+                                    <button onClick={() => {setAddModal(false); setEditModal(null)}} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl font-bold transition-colors">Bekor</button>
+                                    <button 
+                                        onClick={() => {
+                                            const val = document.getElementById('studentNameInput').value;
+                                            addModal ? handleAdd(val) : handleEdit({...editModal, name: val});
+                                        }} 
+                                        className="flex-1 py-3 bg-[#007AFF] hover:bg-[#005bb5] text-white rounded-xl font-bold transition-colors"
+                                    >
+                                        Saqlash
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {deleteModal && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+                            <div className="bg-white rounded-2xl p-6 w-full max-w-sm animate-slide-up shadow-2xl text-center">
+                                <h3 className="text-xl font-bold mb-2">O'chirish</h3>
+                                <p className="text-gray-500 mb-6">{deleteModal.name} o'chirilsinmi?</p>
+                                <div className="flex gap-3">
+                                    <button onClick={() => setDeleteModal(null)} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl font-bold transition-colors">Yo'q</button>
+                                    <button onClick={handleDelete} className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold transition-colors">Ha</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {lessonModal && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+                            <div className="bg-white rounded-2xl p-6 w-full max-w-sm animate-slide-up shadow-2xl">
+                                <h3 className="text-lg font-bold text-center mb-1">{lessonModal.name}</h3>
+                                <p className="text-center text-gray-500 text-sm mb-4">Qaysi soatlarda darsda yo'q?</p>
+                                
+                                <div className="grid grid-cols-4 gap-3 mb-6">
+                                    {[1, 2, 3, 4, 5, 6, 7].map(num => {
+                                        const isMissed = missedLessons[lessonModal.id]?.includes(num);
+                                        return (
+                                            <button
+                                                key={num}
+                                                onClick={() => toggleLesson(lessonModal.id, num)}
+                                                className={`aspect-square rounded-xl font-bold text-xl transition-all ${isMissed ? 'bg-purple-600 text-white shadow-lg scale-105' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}
+                                            >
+                                                {num}
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+                                <button onClick={() => setLessonModal(null)} className="w-full py-3 bg-[#007AFF] hover:bg-[#005bb5] text-white rounded-xl font-bold transition-colors">Yopish</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* PDF Template - СКРЫТ */}
+                    <div id="print-container">
+                        <div id="pdf-content" className="pdf-page">
+                            <div className="border-b-2 border-black pb-2 mb-4 flex justify-between items-end">
+                                <div>
+                                    <h1 className="text-2xl font-bold text-black uppercase">11 - "G" Sinfkom Jurnali</h1>
+                                    <p className="text-lg mt-1">Sana: <span className="font-bold">{currentDate}</span></p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-sm text-gray-500">Hisobot</p>
+                                </div>
+                            </div>
+
+                            <table className="pdf-table">
+                                <thead>
+                                    <tr className="bg-gray-100">
+                                        <th style={{width: '40px', textAlign: 'center'}}>№</th>
+                                        <th style={{textAlign: 'left'}}>F.I.SH</th>
+                                        <th style={{width: '200px', textAlign: 'center'}}>Holat</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {students.map((s, i) => {
+                                        const content = getStatusTextPDF(s.id);
+                                        const isAbsent = attendance[s.id] && attendance[s.id] !== 'bor';
+                                        
+                                        return (
+                                            <tr key={s.id} className={isAbsent ? 'bg-gray-50' : ''}>
+                                                <td style={{textAlign: 'center', fontWeight: 'bold'}}>{i + 1}</td>
+                                                <td style={{fontWeight: '500'}}>{s.name}</td>
+                                                <td style={{textAlign: 'center'}}>
+                                                    {content}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
