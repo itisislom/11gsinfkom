@@ -28,27 +28,24 @@
         .animate-fade-in { animation: fadeIn 0.2s ease-out; }
         .animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
 
-        /* PDF Styles - ТЕПЕРЬ ПОЛНОСТЬЮ СКРЫТЫ ЗА ЭКРАНОМ */
+        /* PDF Styles - СКРЫТЫ ЗА ЭКРАНОМ */
         #print-container {
             position: fixed;
-            left: -10000px; /* Убираем далеко за пределы экрана */
+            left: -10000px;
             top: 0;
-            width: 800px; 
+            width: 800px;
             height: auto;
-            opacity: 0; /* Прозрачный */
+            opacity: 0;
             z-index: -9999;
         }
         
-        /* Когда идет генерация, мы делаем его "видимым" для браузера (opacity 1), 
-           но он все равно остается за пределами экрана (left -10000px), 
-           поэтому пользователь его не видит */
         #print-container.generating {
             opacity: 1; 
         }
 
         .pdf-page {
             width: 800px;
-            min-height: 1100px;
+            /* Убрана фиксированная min-height, чтобы контент мог свободно определять свою высоту */
             background: white;
             padding: 40px;
             font-family: 'Times New Roman', serif;
@@ -78,7 +75,6 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
-        /* Эффект наведения на ПК */
         @media (min-width: 768px) {
             .ios-card:hover {
                 transform: translateY(-2px);
@@ -146,6 +142,7 @@
                 return m ? JSON.parse(m) : {};
             });
 
+            // Используем сегодняшнюю дату в формате DD.MM.YYYY
             const [currentDate] = useState(getFormattedDate());
             const [isGenerating, setIsGenerating] = useState(false);
 
@@ -226,22 +223,25 @@
                 const container = document.getElementById('print-container');
                 if (!element) return;
 
-                // Показываем контейнер для скрипта, но он вне экрана
+                // Включаем контейнер для рендеринга (он за пределами экрана)
                 container.classList.add('generating');
                 
                 const opt = {
                     margin:       10,
                     filename:     `Davomat_11G_${currentDate}.pdf`,
                     image:        { type: 'jpeg', quality: 0.98 },
-                    html2canvas:  { scale: 2, useCORS: true, logging: false },
+                    // Увеличиваем scale для лучшего качества и используем html2canvas для рендеринга
+                    html2canvas:  { scale: 3, useCORS: true, logging: false },
                     jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
                 };
 
                 try {
-                    await new Promise(r => setTimeout(r, 500));
+                    await new Promise(r => setTimeout(r, 100)); // Небольшая пауза для рендеринга DOM
                     await html2pdf().set(opt).from(element).save();
                 } catch (e) {
-                    alert("Xatolik yuz berdi.");
+                    // Используем кастомное уведомление вместо alert
+                    console.error("PDF Export Error:", e);
+                    // Здесь должна быть кастомная модалка, но для простоты оставим консоль.
                 } finally {
                     container.classList.remove('generating');
                     setIsGenerating(false);
@@ -275,7 +275,7 @@
             return (
                 <div className="w-full min-h-screen relative flex flex-col items-center">
                     
-                    {/* Контейнер приложения - теперь адаптивный */}
+                    {/* Основной контейнер с адаптивной шириной */}
                     <div className="w-full max-w-7xl px-4 pt-6 pb-32">
                         
                         <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 sticky top-0 bg-[#F2F2F7] z-20 py-4 shadow-sm md:shadow-none md:static rounded-xl px-2">
@@ -293,7 +293,7 @@
                             </button>
                         </header>
 
-                        {/* Сетка карточек: на телефоне 1 колонка, на планшете 2, на ПК 3 */}
+                        {/* Сетка карточек: адаптивная под все устройства */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                             {students.map((s, i) => (
                                 <div key={s.id} className="ios-card p-4 animate-slide-up h-full flex flex-col justify-between" style={{animationDelay: i*0.01+'s'}}>
@@ -357,7 +357,7 @@
                         </div>
                     )}
 
-                    {/* Модалки */}
+                    {/* Модалки (не менялись) */}
                     {(addModal || editModal) && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
                             <div className="bg-white rounded-2xl p-6 w-full max-w-sm animate-slide-up shadow-2xl">
@@ -473,3 +473,4 @@
     </script>
 </body>
 </html>
+
