@@ -43,13 +43,14 @@
         /* PDF Styles - Kiritish/Print Container */
         #print-container {
             position: fixed;
-            left: -10000px;
+            left: -10000px; /* Скрывает контейнер вне экрана */
             top: 0;
             width: 210mm; /* A4 width */
             height: 297mm; /* A4 height */
             opacity: 0;
             z-index: -9999;
             box-sizing: border-box;
+            /* Важно: должен быть внутри компонента React для корректного рендеринга данных */
         }
 
         /*
@@ -185,23 +186,22 @@
             // Toggle attendance status
             const toggleStatus = (id, status) => {
                 setAttendance(prev => {
+                    // Если статус уже выбран, сбросить его
                     if (prev[id] === status) {
                         const next = { ...prev };
                         delete next[id];
-                        return next;
-                    }
-                    
-                    // If marking 'Bor' (Present), clear missed lessons for that student
-                    if (status === 'bor') {
+                        
+                        // Если сбрасываем статус, также очищаем пропущенные уроки (если они были)
                         setMissedLessons(prevL => {
                             const nextL = { ...prevL };
                             delete nextL[id];
                             return nextL;
                         });
+                        return next;
                     }
                     
-                    // If marking 'Yoq' or other absent status, ensure missedLessons is cleared as the status covers the whole day
-                    if (status !== 'bor') {
+                    // Если выбран 'Bor' или любой другой полный статус отсутствия, очищаем почасовые пропуски
+                    if (status !== 'darsda_yoq_soatli') {
                         setMissedLessons(prevL => {
                             const nextL = { ...prevL };
                             delete nextL[id];
@@ -224,12 +224,12 @@
                         updated = [...current, lessonNum].sort((a, b) => a - b);
                     }
                     
-                    // If lessons are missed, set status to 'darsda_yoq_soatli' (custom key for specific hours)
+                    // Если есть пропущенные часы, устанавливаем статус 'darsda_yoq_soatli'
                     if (updated.length > 0) {
                         setAttendance(prevA => ({ ...prevA, [studentId]: 'darsda_yoq_soatli' }));
                         return { ...prev, [studentId]: updated };
                     } else {
-                        // If no lessons are missed, remove both missed lessons and attendance status
+                        // Если все часы выбраны, сбрасываем статус посещаемости
                         const next = { ...prev };
                         delete next[studentId];
                         setAttendance(prevA => {
@@ -264,14 +264,15 @@
             // --- PDF EXPORT FUNCTION (Optimized for A4 and page breaks) ---
             const handleExport = async () => {
                 setIsGenerating(true);
+                // Используем элемент, который теперь рендерится React'ом
                 const element = document.getElementById('pdf-content'); 
-                const container = document.getElementById('print-container');
+                
                 if (!element) {
+                    console.error("PDF content element not found.");
                     setIsGenerating(false);
                     return;
                 }
 
-                container.classList.add('generating');
                 
                 const opt = {
                     margin:       [10, 10, 10, 10], // Margins: [top, left, bottom, right] in mm
@@ -290,17 +291,18 @@
                 };
 
                 try {
-                    await new Promise(r => setTimeout(r, 100)); // Delay for rendering hidden content
+                    // Небольшая задержка, чтобы браузер успел отрисовать скрытый элемент
+                    await new Promise(r => setTimeout(r, 100)); 
                     await html2pdf().set(opt).from(element).save();
                 } catch (e) {
                     console.error("PDF Export Error:", e);
                 } finally {
-                    container.classList.remove('generating');
                     setIsGenerating(false);
                 }
             };
 
             // --- PDF STATUS FORMATTER ---
+            // Возвращает чистый JSX, который теперь корректно рендерится в скрытом элементе React
             const getStatusTextPDF = (id) => {
                 const status = attendance[id];
                 const missed = missedLessons[id] || [];
@@ -337,21 +339,25 @@
                 const currentStatus = attendance[studentId];
                 const btnData = STATUS_BTNS.find(b => b.key === key);
                 
-                // Maxsus holat: agar status soatli bo'lsa, barcha boshqa tugmalarni oddiy ko'rsatish
-                if (currentStatus === 'darsda_yoq_soatli' && key !== 'bor') {
-                    return 'bg-gray-50 text-gray-400 border-transparent';
+                const isMissedHours = currentStatus === 'darsda_yoq_soatli';
+
+                // Если выбран почасовой пропуск, отключаем полные статусы отсутствия, но оставляем "Bor" для сброса
+                if (isMissedHours && key !== 'bor') {
+                    return 'bg-gray-50 text-gray-400 border-transparent opacity-50 cursor-not-allowed';
                 }
                 
-                // Maxsus holat: soatli yo'q bo'lsa, faqat "Bor" tugmasi tanlanmagan holatda bo'ladi
-                if (currentStatus === 'darsda_yoq_soatli' && key === 'bor') {
-                     return 'bg-gray-50 text-gray-400 border-transparent';
+                // Если выбран полный статус отсутствия (yoq, sababli, oilaviy), отключаем "Bor" и почасовую кнопку (они уже отключены в другом месте)
+                if (currentStatus && currentStatus !== 'bor' && key === 'bor') {
+                    return 'bg-gray-50 text-gray-400 border-transparent opacity-50 cursor-not-allowed';
                 }
-                
+
+                // Активное состояние
                 if (currentStatus === key) {
                     return btnData.color + ' border-current shadow-sm ring-2 ring-offset-1 ring-gray-200';
                 }
                 
-                return 'bg-gray-50 text-gray-400 border-transparent';
+                // Стандартное состояние
+                return 'bg-gray-50 text-gray-400 border-transparent hover:bg-gray-100';
             };
 
 
@@ -383,6 +389,9 @@
                                 const isMissedHours = attendance[s.id] === 'darsda_yoq_soatli';
                                 const currentLessons = missedLessons[s.id] || [];
                                 
+                                // Условие, когда кнопка "часов" должна быть отключена (если выбран полный статус отсутствия, кроме 'Bor')
+                                const isHourButtonDisabled = attendance[s.id] && attendance[s.id] !== 'darsda_yoq_soatli' && attendance[s.id] !== 'bor';
+                                
                                 return (
                                 <div key={s.id} className="ios-card p-4 h-full flex flex-col justify-between transition-all duration-200 hover:border-blue-300">
                                     <div className="flex justify-between items-center mb-3">
@@ -404,6 +413,7 @@
                                                         key={btn.key}
                                                         onClick={() => toggleStatus(s.id, btn.key)}
                                                         className={`py-2 rounded-lg text-[10px] sm:text-xs font-bold border transition-all active:scale-95 ${getButtonClass(s.id, btn.key)}`}
+                                                        disabled={isMissedHours && btn.key !== 'bor'} // Отключаем кнопки полного отсутствия при почасовом пропуске
                                                     >
                                                         {btn.label}
                                                     </button>
@@ -412,9 +422,9 @@
                                             
                                             <button 
                                                 onClick={() => setLessonModal({id: s.id, name: s.name})}
-                                                className={`w-10 flex items-center justify-center rounded-lg border transition-all hover:bg-gray-100 ${currentLessons.length ? 'bg-purple-100 text-purple-600 border-purple-300 shadow-sm' : 'bg-gray-50 text-gray-400 border-transparent'}`}
+                                                className={`w-10 flex items-center justify-center rounded-lg border transition-all hover:bg-gray-100 ${currentLessons.length ? 'bg-purple-100 text-purple-600 border-purple-300 shadow-sm' : 'bg-gray-50 text-gray-400 border-transparent'} ${isHourButtonDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                 title="Dars qoldirish soatlari"
-                                                disabled={attendance[s.id] && attendance[s.id] !== 'darsda_yoq_soatli' && attendance[s.id] !== 'bor'}
+                                                disabled={isHourButtonDisabled} // Отключаем кнопку часов при полном пропуске
                                             >
                                                 <Icons.Clock />
                                             </button>
@@ -520,8 +530,17 @@
                         </div>
                     )}
 
-                    {/* PDF Template - YASHIRINGAN KONTENT (Optimallashtirilgan) */}
-                    <div id="print-container">
+                    {/* PDF Template - YASHIRINGAN KONTENT (Теперь внутри компонента React) */}
+                    <div id="print-container" style={{
+                        position: 'fixed',
+                        left: '-10000px',
+                        top: 0,
+                        width: '210mm',
+                        height: '297mm',
+                        opacity: 0,
+                        zIndex: -9999,
+                        boxSizing: 'border-box'
+                    }}>
                         <div id="pdf-content" className="html2pdf-content">
                             
                             {/* Sarlavha Qismi - Sahifani bo'lishga yo'l qo'yilmaydi */}
@@ -535,7 +554,6 @@
                                     </p>
                                 </div>
                                 <div style={{textAlign: 'right'}}>
-                                    {/* O'zgartirish: Tuzuvchi nomi o'zgartirildi */}
                                     <p style={{fontSize: '10pt', color: '#555'}}>Tuzuvchi: Sadriddinov Islom</p>
                                 </div>
                             </div>
@@ -559,6 +577,7 @@
                                                 <td style={{fontWeight: 'bold'}}>{i + 1}</td>
                                                 <td>{s.name}</td>
                                                 <td>
+                                                    {/* Важно: В JSX-среде React вставляем JSX, возвращаемый функцией */}
                                                     {content}
                                                 </td>
                                             </tr>
@@ -567,8 +586,7 @@
                                 </tbody>
                             </table>
                             
-                            {/* So'rovga ko'ra Izoh va Imzo qismlari olib tashlandi. */}
-                            {/* Matn davom ettiriladi, agar u keyingi sahifaga o'tsa, to'g'ri bo'linadi. */}
+                            {/* Дополнительные примечания - в соответствии с последним запросом убраны */}
 
                         </div>
                     </div>
