@@ -40,7 +40,7 @@
         /* PDF-area kept off-screen but present in DOM (we clone it before export) */
         #print-container {
             position: absolute;
-            left: -9999px;
+            left: -9999px; /* Оставляем его скрытым, мы всё равно клонируем */
             top: 0;
             width: 210mm;
             height: auto;
@@ -59,6 +59,8 @@
             height: auto;
         }
 
+        /* Эти стили больше не являются критичными для PDF, так как мы их встроили,
+           но оставим их для CSS-селектора в JS (на всякий случай) */
         .pdf-table {
             width: 100%;
             border-collapse: collapse;
@@ -316,8 +318,13 @@
                 setCustomReasonModal(null);
             };
 
+            // ========== ИСПРАВЛЕНИЕ ЗДЕСЬ ==========
             // Build HTML for the hidden PDF area based on current state
             const buildPdfHtml = () => {
+                // Определяем стили как константы, чтобы избежать ошибок
+                const thStyle = "border: 1px solid #000; padding: 4px 6px; font-size: 11pt; vertical-align: middle; text-align: center; height: 30px; line-height: 1.2; background-color: #e5e5e5; font-weight: bold;";
+                const tdStyle = "border: 1px solid #000; padding: 4px 6px; font-size: 11pt; vertical-align: middle; text-align: center; height: 30px; line-height: 1.2;";
+
                 const headerHtml = `
                     <div style="border-bottom:2px solid #000; padding-bottom:8px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:flex-end;">
                         <div>
@@ -336,6 +343,7 @@
                     const reason = customReasons[s.id];
                     let statusHtml = '';
 
+                    // Стили для статусов уже были inline, это хорошо
                     if (status === 'darsda_yoq_soatli' && missed.length > 0) {
                         statusHtml = `<span style="color:#991b1b;font-weight:bold;">Soatli yo'q</span><div style="font-size:9pt;color:#000;margin-top:4px;">(${missed.join(', ')}-soat)</div>`;
                     } else if (status === 'custom_reason' && reason) {
@@ -352,20 +360,21 @@
                         statusHtml = '';
                     }
 
+                    // Применяем tdStyle к каждой ячейке <td>
                     return `<tr>
-                        <td style="font-weight:bold;text-align:center;width:6%;">${i+1}</td>
-                        <td style="text-align:left;width:60%;">${s.name}</td>
-                        <td style="width:34%;">${statusHtml}</td>
+                        <td style="${tdStyle} font-weight:bold; text-align:center; width:6%;">${i+1}</td>
+                        <td style="${tdStyle} text-align:left; width:60%;">${s.name}</td>
+                        <td style="${tdStyle} width:34%;">${statusHtml}</td>
                     </tr>`;
                 }).join('');
 
                 const tableHtml = `
-                    <table class="pdf-table" style="width:100%; border-collapse:collapse;">
+                    <table style="width:100%; border-collapse:collapse; margin-top: 15px;">
                         <thead>
                             <tr>
-                                <th style="width:6%;">T/r</th>
-                                <th style="width:60%; text-align:left;">O'quvchi F.I.SH.</th>
-                                <th style="width:34%;">Davomat Holati</th>
+                                <th style="${thStyle} width:6%;">T/r</th>
+                                <th style="${thStyle} width:60%; text-align:left;">O'quvchi F.I.SH.</th>
+                                <th style="${thStyle} width:34%;">Davomat Holati</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -376,6 +385,8 @@
 
                 return headerHtml + tableHtml;
             };
+            // ========== КОНЕЦ ИСПРАВЛЕНИЯ ==========
+
 
             // --- PDF EXPORT (robust) ---
             const handleExport = async () => {
@@ -429,6 +440,7 @@
 
                 } catch (err) {
                     console.error("PDF Export Error:", err);
+                    // Заменяем alert на более мягкое уведомление, если это возможно, но пока оставим alert
                     alert("Xatolik: PDF yaratilishda muammo yuz berdi. Konsolni tekshiring.");
                 } finally {
                     setIsGenerating(false);
@@ -436,6 +448,9 @@
             };
 
             // Helper for PDF UI text (React visible UI not PDF)
+            // Эта функция НЕ используется для генерации HTML для PDF,
+            // она использовалась бы, если бы вы рендерили PDF через React (что не так)
+            // Но мы оставим её, так как она не мешает.
             const getStatusTextPDF = (id) => {
                 const status = attendance[id];
                 const missed = missedLessons[id] || [];
