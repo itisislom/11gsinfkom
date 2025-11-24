@@ -14,8 +14,6 @@
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- PDF Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <style>
         body {
@@ -37,12 +35,12 @@
             }
         }
 
-        /* PDF-area kept off-screen but present in DOM (we clone it before export) */
+        /* PDF-area kept off-screen but present in DOM */
         #print-container {
             position: absolute;
-            left: -9999px; /* Оставляем его скрытым, мы всё равно клонируем */
+            left: -9999px; /* Скрыто из виду */
             top: 0;
-            width: 210mm;
+            width: 210mm; /* Размер A4 для рендеринга */
             height: auto;
             z-index: -9999;
             box-sizing: border-box;
@@ -58,32 +56,43 @@
             min-height: 0;
             height: auto;
         }
+        
+        /* Стили, которые применяются ТОЛЬКО при печати */
+        @media print {
+            /* Скрываем все приложение */
+            body > #root {
+                display: none;
+            }
+            /* Скрываем все остальное на странице */
+            body > *:not(#print-container) {
+                display: none;
+            }
+            
+            /* Делаем контейнер для печати единственным видимым элементом */
+            #print-container {
+                position: static;
+                left: 0;
+                top: 0;
+                z-index: 9999;
+                width: 100%;
+            }
+            
+            /* Сбрасываем отступы, браузер сам добавит поля при печати */
+            #pdf-content {
+                padding: 0; 
+                margin: 0;
+                width: 100%;
+                font-family: 'Times New Roman', serif;
+                color: black;
+            }
 
-        /* Эти стили больше не являются критичными для PDF, так как мы их встроили,
-           но оставим их для CSS-селектора в JS (на всякий случай) */
-        .pdf-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
-        }
-        .pdf-table th, .pdf-table td {
-            border: 1px solid #000;
-            padding: 4px 6px;
-            font-size: 11pt;
-            vertical-align: middle;
-            text-align: center;
-            height: 30px;
-            line-height: 1.2;
-        }
-        .pdf-table th {
-            background-color: #e5e5e5;
-            font-weight: bold;
-        }
-        .avoid-break {
-            page-break-after: avoid !important;
-            page-break-inside: avoid !important;
+            .avoid-break {
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
+            }
         }
 
+        /* Стили для UI (не для печати) */
         .pdf-text-green { color: #166534; font-weight: bold; }
         .pdf-text-red { color: #991b1b; font-weight: bold; }
         .pdf-text-yellow { color: #854d0e; font-weight: bold; }
@@ -94,10 +103,10 @@
 <body>
     <div id="root"></div>
 
-    <!-- Hidden print container (kept in DOM, off-screen). We'll clone its content on export. -->
+    <!-- Скрытый контейнер для печати. Он будет показан ТОЛЬКО в режиме предпросмотра печати. -->
     <div id="print-container" aria-hidden="true">
-        <div id="pdf-content" class="html2pdf-content">
-            <!-- Content is rendered by React -->
+        <div id="pdf-content">
+            <!-- Content is rendered by React just before printing -->
         </div>
     </div>
 
@@ -137,7 +146,7 @@
         // Simple icons (kept small)
         const Icons = {
             Edit: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>,
-            Download: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
+            Print: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>,
             Clock: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
             Reason: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
             Delete: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>,
@@ -175,7 +184,6 @@
                 return r ? JSON.parse(r) : {};
             });
 
-            const [isGenerating, setIsGenerating] = useState(false);
             const [editModal, setEditModal] = useState(null);
             const [lessonModal, setLessonModal] = useState(null);
             const [customReasonModal, setCustomReasonModal] = useState(null);
@@ -318,10 +326,8 @@
                 setCustomReasonModal(null);
             };
 
-            // ========== ИСПРАВЛЕНИЕ ЗДЕСЬ ==========
-            // Build HTML for the hidden PDF area based on current state
+            // HTML для печати (с исправленными inline-стилями)
             const buildPdfHtml = () => {
-                // Определяем стили как константы, чтобы избежать ошибок
                 const thStyle = "border: 1px solid #000; padding: 4px 6px; font-size: 11pt; vertical-align: middle; text-align: center; height: 30px; line-height: 1.2; background-color: #e5e5e5; font-weight: bold;";
                 const tdStyle = "border: 1px solid #000; padding: 4px 6px; font-size: 11pt; vertical-align: middle; text-align: center; height: 30px; line-height: 1.2;";
 
@@ -343,7 +349,6 @@
                     const reason = customReasons[s.id];
                     let statusHtml = '';
 
-                    // Стили для статусов уже были inline, это хорошо
                     if (status === 'darsda_yoq_soatli' && missed.length > 0) {
                         statusHtml = `<span style="color:#991b1b;font-weight:bold;">Soatli yo'q</span><div style="font-size:9pt;color:#000;margin-top:4px;">(${missed.join(', ')}-soat)</div>`;
                     } else if (status === 'custom_reason' && reason) {
@@ -360,7 +365,6 @@
                         statusHtml = '';
                     }
 
-                    // Применяем tdStyle к каждой ячейке <td>
                     return `<tr>
                         <td style="${tdStyle} font-weight:bold; text-align:center; width:6%;">${i+1}</td>
                         <td style="${tdStyle} text-align:left; width:60%;">${s.name}</td>
@@ -385,107 +389,26 @@
 
                 return headerHtml + tableHtml;
             };
-            // ========== КОНЕЦ ИСПРАВЛЕНИЯ ==========
 
-
-            // --- PDF EXPORT (robust) ---
-            const handleExport = async () => {
-                setIsGenerating(true);
-
-                try {
-                    // Ensure latest React render painted to the DOM by waiting one animation frame.
-                    await new Promise((resolve) => requestAnimationFrame(resolve));
-
-                    // Fill the hidden #pdf-content with current HTML (string) to guarantee sync.
-                    const pdfContainer = document.getElementById('pdf-content');
-                    if (!pdfContainer) {
-                        console.error("pdf-content not found");
-                        setIsGenerating(false);
-                        return;
-                    }
-                    pdfContainer.innerHTML = buildPdfHtml();
-
-                    // Give browser a micro delay to apply innerHTML (another frame)
-                    await new Promise((resolve) => requestAnimationFrame(resolve));
-
-                    // Clone node to avoid mutating the original off-screen container during html2canvas operations.
-                    const clone = pdfContainer.cloneNode(true);
-
-                    // The clone must be visible to canvas; append it to the body, but keep it off-screen via transform
-                    clone.style.position = 'fixed';
-                    clone.style.left = '50%';
-                    clone.style.top = '50%';
-                    clone.style.transform = 'translate(-50%, -50%)';
-                    clone.style.zIndex = '9999';
-                    clone.style.background = 'white';
-                    clone.style.boxSizing = 'border-box';
-                    clone.style.width = '210mm';
-                    clone.style.padding = '15mm';
-                    // Make sure it's visible (but not interfering) while html2canvas runs
-                    document.body.appendChild(clone);
-
-                    const opt = {
-                        margin:       [10, 10, 10, 10],
-                        filename:     `Davomat_11G_${todayDate}.pdf`,
-                        image:        { type: 'jpeg', quality: 0.98 },
-                        html2canvas:  { scale: 2, useCORS: true, logging: false },
-                        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                    };
-
-                    // Use html2pdf with the clone node. html2pdf returns a chainable object. Use .save() which returns a Promise.
-                    await html2pdf().set(opt).from(clone).save();
-
-                    // Clean up clone after save (some browsers keep nodes until GC)
-                    clone.remove();
-
-                } catch (err) {
-                    console.error("PDF Export Error:", err);
-                    // Заменяем alert на более мягкое уведомление, если это возможно, но пока оставим alert
-                    alert("Xatolik: PDF yaratilishda muammo yuz berdi. Konsolni tekshiring.");
-                } finally {
-                    setIsGenerating(false);
+            // --- НОВАЯ ФУНКЦИЯ ДЛЯ ПЕЧАТИ ---
+            const handlePreviewAndPrint = async () => {
+                // 1. Находим контейнер для печати
+                const pdfContainer = document.getElementById('pdf-content');
+                if (!pdfContainer) {
+                    console.error("pdf-content not found");
+                    return;
                 }
+                
+                // 2. Генерируем и вставляем актуальный HTML
+                pdfContainer.innerHTML = buildPdfHtml();
+                
+                // 3. Ждем 1 кадр, чтобы DOM обновился
+                await new Promise((resolve) => requestAnimationFrame(resolve));
+                
+                // 4. Вызываем системное окно печати
+                window.print();
             };
 
-            // Helper for PDF UI text (React visible UI not PDF)
-            // Эта функция НЕ используется для генерации HTML для PDF,
-            // она использовалась бы, если бы вы рендерили PDF через React (что не так)
-            // Но мы оставим её, так как она не мешает.
-            const getStatusTextPDF = (id) => {
-                const status = attendance[id];
-                const missed = missedLessons[id] || [];
-                const reason = customReasons[id];
-
-                if (status === 'darsda_yoq_soatli' && missed.length > 0) {
-                    const lessonsText = missed.join(', ');
-                    return (
-                        <span className="pdf-text-red">
-                            Soatli yo'q
-                            <div style={{fontSize: '9pt', fontWeight:'normal', color:'black', marginTop: '2px'}}>
-                                ({lessonsText}-soat)
-                            </div>
-                        </span>
-                    );
-                }
-
-                if (status === 'custom_reason' && reason) {
-                     return (
-                        <span className="pdf-text-purple">
-                            Boshqa sabab
-                            <div style={{fontSize: '9pt', fontWeight:'normal', color:'black', marginTop: '2px'}}>
-                                ({reason})
-                            </div>
-                        </span>
-                    );
-                }
-
-                if (status === 'bor') return <span className="pdf-text-green">Bor</span>;
-                if (status === 'yoq') return <span className="pdf-text-red">Yo'q</span>;
-                if (status === 'sababli') return <span className="pdf-text-yellow">Sababli</span>;
-                if (status === 'oilaviy') return <span className="pdf-text-blue">Oilaviy sharoit</span>;
-
-                return "";
-            };
 
             // UI constants
             const STATUS_BTNS = [
@@ -533,11 +456,10 @@
                                      <Icons.AddUser /> Qo'shish
                                 </button>
                                 <button
-                                    onClick={handleExport}
-                                    disabled={isGenerating}
+                                    onClick={handlePreviewAndPrint}
                                     className="bg-[#007AFF] hover:bg-[#005bb5] text-white px-6 py-3 rounded-full shadow-lg active:scale-95 transition-transform flex items-center gap-2 font-semibold"
                                 >
-                                     {isGenerating ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"/> : <><Icons.Download /> PDF yuklab olish</>}
+                                    <Icons.Print /> Посмотреть документ
                                 </button>
                             </div>
                         </header>
@@ -620,13 +542,6 @@
                             })}
                         </div>
                     </div>
-
-                    {isGenerating && (
-                        <div className="fixed inset-0 bg-black/50 z-50 flex flex-col items-center justify-center text-white backdrop-blur-sm">
-                            <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mb-4"></div>
-                            <p className="font-bold text-lg">PDF tayyorlanmoqda...</p>
-                        </div>
-                    )}
 
                     {/* Modallar (edit/lesson/customReason/delete) */}
                     {(editModal || lessonModal || customReasonModal || deleteModal) && (
