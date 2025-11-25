@@ -265,41 +265,43 @@
             };
 
             const toggleLesson = (studentId, lessonNum) => {
-                let newAttendanceStatus = undefined;
-                setMissedLessons(prev => {
-                    const current = prev[studentId] || [];
-                    let updated;
-                    if (current.includes(lessonNum)) {
-                        updated = current.filter(l => l !== lessonNum);
-                    } else {
-                        updated = [...current, lessonNum].sort((a, b) => a - b);
-                    }
-                    if (updated.length > 0) {
-                        newAttendanceStatus = 'darsda_yoq_soatli';
-                        return { ...prev, [studentId]: updated };
-                    } else {
-                        newAttendanceStatus = 'remove';
-                        const next = { ...prev };
-                        delete next[studentId];
-                        return next;
-                    }
-                });
+                // 1. Calculate the *next* state for missedLessons
+                const currentLessons = missedLessons[studentId] || [];
+                let nextLessons;
+                if (currentLessons.includes(lessonNum)) {
+                    nextLessons = currentLessons.filter(l => l !== lessonNum);
+                } else {
+                    nextLessons = [...currentLessons, lessonNum].sort((a, b) => a - b);
+                }
 
-                setAttendance(prevA => {
-                    const nextA = { ...prevA };
-                    if (newAttendanceStatus === 'darsda_yoq_soatli') {
-                        nextA[studentId] = 'darsda_yoq_soatli';
-                        setCustomReasons(prevR => {
-                            if (!prevR[studentId]) return prevR;
-                            const nextR = { ...prevR };
-                            delete nextR[studentId];
-                            return nextR;
-                        });
-                    } else if (newAttendanceStatus === 'remove') {
-                        delete nextA[studentId];
-                    }
-                    return nextA;
-                });
+                // 2. Now, update all related states based on the *next* state
+                if (nextLessons.length > 0) {
+                    // We have missed lessons
+                    setMissedLessons(prev => ({ ...prev, [studentId]: nextLessons }));
+                    setAttendance(prevA => ({ ...prevA, [studentId]: 'darsda_yoq_soatli' }));
+                    setCustomReasons(prevR => {
+                        if (!prevR[studentId]) return prevR;
+                        const nextR = { ...prevR };
+                        delete nextR[studentId];
+                        return nextR;
+                    });
+                } else {
+                    // We have NO missed lessons
+                    setMissedLessons(prevL => {
+                        const nextL = { ...prevL };
+                        delete nextL[studentId];
+                        return nextL;
+                    });
+                    // Also clear the attendance status
+                    setAttendance(prevA => {
+                        if (prevA[studentId] === 'darsda_yoq_soatli') {
+                             const nextA = { ...prevA };
+                             delete nextA[studentId];
+                             return nextA;
+                        }
+                        return prevA; // Don't change it if it was something else
+                    });
+                }
             };
 
             const handleAddOrEdit = (studentData) => {
@@ -580,6 +582,11 @@
                                 );
                             })}
                         </div>
+
+                        <footer className="mt-12 text-center text-gray-500 text-sm">
+                            <p>&copy; {new Date().getFullYear()} Islom Sadriddinov. Barcha huquqlar himoyalangan.</p>
+                        </footer>
+
                     </div>
 
                     {/* Modallar (edit/lesson/customReason/delete) */}
