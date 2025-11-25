@@ -161,25 +161,55 @@
             return `${day}.${month}.${year}`;
         };
 
-        function App() {
-            const todayDate = getFormattedDate();
+        // --- НОВАЯ ЛОГИКА (BUG 1) ---
+        // Получаем сегодняшнюю дату
+        const todayDate = getFormattedDate();
 
+        // Функция для инициализации и проверки данных при загрузке
+        const initializeDailyData = () => {
+            const storedDate = localStorage.getItem('attendance_date');
+            
+            // Если сохраненная дата не совпадает с сегодняшней,
+            // значит наступил новый день и нужно очистить данные.
+            if (storedDate !== todayDate) {
+                localStorage.removeItem('attendance_data');
+                localStorage.removeItem('missed_lessons');
+                localStorage.removeItem('custom_reasons');
+                // Устанавливаем новую дату
+                localStorage.setItem('attendance_date', todayDate);
+                return true; // Сообщаем, что данные были очищены
+            }
+            return false; // Данные не очищались (тот же день)
+        };
+
+        // Запускаем проверку ДО рендера React
+        const wasDataCleared = initializeDailyData();
+        // --- КОНЕЦ НОВОЙ ЛОГИКИ ---
+
+        function App() {
+            // const todayDate = getFormattedDate(); // <-- Эту строку перенесли наверх
+            
+            // (BUG 1) Загружаем учеников (список не очищается)
             const [students, setStudents] = useState(() => {
                 const s = localStorage.getItem('students_list');
                 return s ? JSON.parse(s) : INITIAL_STUDENTS;
             });
 
+            // (BUG 1) Инициализируем состояния с учетом очистки
             const [attendance, setAttendance] = useState(() => {
+                if (wasDataCleared) return {}; // Если день новый, начинаем с пустого объекта
                 const a = localStorage.getItem('attendance_data');
                 return a ? JSON.parse(a) : {};
             });
 
             const [missedLessons, setMissedLessons] = useState(() => {
+                if (wasDataCleared) return {};
                 const m = localStorage.getItem('missed_lessons');
                 return m ? JSON.parse(m) : {};
             });
 
             const [customReasons, setCustomReasons] = useState(() => {
+                if (wasDataCleared) return {};
                 const r = localStorage.getItem('custom_reasons');
                 return r ? JSON.parse(r) : {};
             });
@@ -326,7 +356,7 @@
                 setCustomReasonModal(null);
             };
 
-            // HTML для печати (с исправленными inline-стилями)
+            // HTML для печати
             const buildPdfHtml = () => {
                 const thStyle = "border: 1px solid #000; padding: 4px 6px; font-size: 11pt; vertical-align: middle; text-align: center; height: 30px; line-height: 1.2; background-color: #e5e5e5; font-weight: bold;";
                 const tdStyle = "border: 1px solid #000; padding: 4px 6px; font-size: 11pt; vertical-align: middle; text-align: center; height: 30px; line-height: 1.2;";
@@ -351,8 +381,12 @@
 
                     if (status === 'darsda_yoq_soatli' && missed.length > 0) {
                         statusHtml = `<span style="color:#991b1b;font-weight:bold;">Soatli yo'q</span><div style="font-size:9pt;color:#000;margin-top:4px;">(${missed.join(', ')}-soat)</div>`;
+                    
+                    // --- ИЗМЕНЕНИЕ (BUG 3) ---
                     } else if (status === 'custom_reason' && reason) {
-                        statusHtml = `<span style="color:#581c87;font-weight:bold;">Boshqa sabab</span><div style="font-size:9pt;color:#000;margin-top:4px;">(${reason})</div>`;
+                        statusHtml = `<span style="color:#581c87;font-weight:bold;">Sababi:</span><div style="font-size:9pt;color:#000;margin-top:4px;">(${reason})</div>`;
+                    // --- КОНЕЦ ИЗМЕНЕНИЯ ---
+
                     } else if (status === 'bor') {
                         statusHtml = `<span style="color:#166534;font-weight:bold;">Bor</span>`;
                     } else if (status === 'yoq') {
@@ -418,26 +452,30 @@
                 { key: 'oilaviy', label: 'Oilaviy', color: 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100' }
             ];
 
+            // --- ИСПРАВЛЕННАЯ ФУНКЦИЯ (BUG 2) ---
             const getButtonClass = (studentId, key) => {
                 const currentStatus = attendance[studentId];
                 const btnData = STATUS_BTNS.find(b => b.key === key);
 
+                // Если выбраны "часы" или "кастомная причина"
                 if (currentStatus === 'darsda_yoq_soatli' || currentStatus === 'custom_reason') {
                     if (key === 'bor') {
-                        if (currentStatus === 'bor') {
-                             return btnData.color + ' border-current shadow-sm ring-2 ring-offset-1 ring-gray-200';
-                        }
-                         return 'bg-gray-50 text-gray-400 border-transparent cursor-not-allowed opacity-60';
+                        // Кнопка "Bor" (Присутствует) должна быть активной, чтобы можно было сбросить статус
+                        return 'bg-gray-50 text-gray-400 border-transparent hover:bg-gray-100';
                     }
+                    // Все остальные кнопки ("Yo'q", "Sababli"...) должны быть выключены
                     return 'bg-gray-50 text-gray-400 border-transparent cursor-not-allowed opacity-60';
                 }
 
+                // Если статус совпадает с кнопкой (кнопка "нажата")
                 if (currentStatus === key) {
                     return btnData.color + ' border-current shadow-sm ring-2 ring-offset-1 ring-gray-200';
                 }
 
+                // Обычное состояние кнопки (не нажата)
                 return 'bg-gray-50 text-gray-400 border-transparent hover:bg-gray-100';
             };
+            // --- КОНЕЦ ИСПРАВЛЕНИЯ ---
 
             return (
                 <div className="w-full min-h-screen relative flex flex-col items-center">
@@ -495,6 +533,7 @@
                                                         key={btn.key}
                                                         onClick={() => toggleStatus(s.id, btn.key)}
                                                         className={`py-2 rounded-lg text-[10px] sm:text-xs font-bold border transition-all active:scale-95 ${getButtonClass(s.id, btn.key)}`}
+                                                        // (BUG 2) Отключаем кнопки (кроме "Bor") если выбраны часы или кастомная причина
                                                         disabled={(isMissedHours || isCustomReason) && btn.key !== 'bor'}
                                                     >
                                                         {btn.label}
@@ -534,11 +573,11 @@
                                         {isFullDayAbsent && (
                                              <div className="mt-2 text-xs text-red-600 font-medium px-2 bg-red-50 py-1 rounded-md">
                                                 To'liq kun yo'q (sababi: {STATUS_BTNS.find(b => b.key === currentStatus)?.label})
-                                            </div>
+                                             </div>
                                         )}
                                     </div>
                                 </div>
-                            );
+                                );
                             })}
                         </div>
                     </div>
