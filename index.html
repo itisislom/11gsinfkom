@@ -382,7 +382,7 @@
                     let statusHtml = '';
 
                     if (status === 'darsda_yoq_soatli' && missed.length > 0) {
-                        statusHtml = `<span style="color:#991b1b;font-weight:bold;">Soatli yo'q</span><div style="font-size:9pt;color:#000;margin-top:4px;">(${missed.join(', ')}-soat)</div>`;
+                        statusHtml = `<span style="color:#991b1b;font-weight:bold;">Darslarda yo'q</span><div style="font-size:9pt;color:#000;margin-top:4px;">(${missed.join(', ')}-soat)</div>`;
                     
                     // --- ИЗМЕНЕНИЕ (BUG 3) ---
                     } else if (status === 'custom_reason' && reason) {
@@ -706,3 +706,4 @@
     </script>
 </body>
 </html>
+
